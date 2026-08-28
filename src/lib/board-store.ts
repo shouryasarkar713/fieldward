@@ -76,6 +76,8 @@ type BoardState = {
 };
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let isRefreshingBoard = false;
+let latestBoardVersion = 0;
 
 /**
  * Board item ids with un-persisted local edits (day blocks mid-typing). The
@@ -132,13 +134,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   refresh: async () => {
     const sessionId = get().sessionId ?? getSessionId();
-    if (sessionId.length === 0) return;
+    if (sessionId.length === 0 || isRefreshingBoard) return;
+    isRefreshingBoard = true;
+    const reqVersion = ++latestBoardVersion;
+
     try {
       const response = await fetch(`/api/board?sessionId=${encodeURIComponent(sessionId)}`, {
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok || reqVersion < latestBoardVersion) return;
       const board: BoardResponse = await response.json();
+      if (reqVersion < latestBoardVersion) return;
+
       // Only overwrite state when the payload actually differs, so polling
       // does not re-render (or re-trigger entry animations) on every tick.
       // Items with un-persisted local edits (a day block mid-typing) are
@@ -173,6 +180,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }
     } catch {
       // Network hiccup — the next poll will recover.
+    } finally {
+      isRefreshingBoard = false;
     }
   },
 

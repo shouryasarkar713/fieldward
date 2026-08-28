@@ -47,6 +47,8 @@ type BriefState = {
 };
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let isRefreshingBrief = false;
+let latestBriefVersion = 0;
 
 async function postBrief(
   path: string,
@@ -90,13 +92,18 @@ export const useBriefStore = create<BriefState>((set, get) => ({
 
   refresh: async () => {
     const sessionId = get().sessionId ?? getSessionId();
-    if (sessionId.length === 0) return;
+    if (sessionId.length === 0 || isRefreshingBrief) return;
+    isRefreshingBrief = true;
+    const reqVersion = ++latestBriefVersion;
+
     try {
       const response = await fetch(`/api/brief?sessionId=${encodeURIComponent(sessionId)}`, {
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok || reqVersion < latestBriefVersion) return;
       const body = (await response.json()) as { brief: TripBriefDTO | null };
+      if (reqVersion < latestBriefVersion) return;
+
       const current = get();
       // Skip no-op writes so polling doesn't re-render the editor.
       const same =
@@ -118,11 +125,14 @@ export const useBriefStore = create<BriefState>((set, get) => ({
       }
     } catch {
       // Network hiccup — the next poll will recover.
+    } finally {
+      isRefreshingBrief = false;
     }
   },
 
   save: async (input) => {
     const sessionId = get().sessionId ?? getSessionId();
+    latestBriefVersion++;
     try {
       const brief = await postBrief("/api/brief/update", {
         sessionId,
@@ -134,6 +144,7 @@ export const useBriefStore = create<BriefState>((set, get) => ({
         updatedBy: "human",
       });
       if (brief === undefined) return false;
+      latestBriefVersion++;
       set({ brief });
       return true;
     } catch {
