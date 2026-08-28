@@ -66,31 +66,83 @@ async function fetchJson(url: string): Promise<Record<string, unknown>> {
 
 /* ── Geocoding ───────────────────────────────────────────────────────────── */
 
+function normalizeGeoString(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function scoreGeoCandidate(candidate: Record<string, unknown>, query: string): number {
+  const normQuery = normalizeGeoString(query);
+  const normName = normalizeGeoString(typeof candidate.name === "string" ? candidate.name : "");
+  const normAdmin = normalizeGeoString(typeof candidate.admin1 === "string" ? candidate.admin1 : "");
+  const normCountry = normalizeGeoString(typeof candidate.country === "string" ? candidate.country : "");
+
+  let score = 0;
+
+  // 1. Exact match on place name (e.g. "Leh" -> "Leh")
+  if (normName === normQuery) score += 100;
+
+  // 2. Word boundary match on place name (e.g. "Ladakh" -> "Ladakh Range", "Cascades" -> "North Cascades")
+  if (normName.startsWith(`${normQuery} `) || normName.endsWith(` ${normQuery}`) || normName.includes(` ${normQuery} `)) {
+    score += 80;
+  }
+
+  // 3. Region / State / Administrative match (e.g. "Ladakh" -> places with admin1: "Ladakh")
+  if (normAdmin === normQuery) score += 75;
+
+  // 4. Country match
+  if (normCountry === normQuery) score += 40;
+
+  // 5. Geographic features prioritization (mountains, national parks, administrative regions, populated places)
+  const featureCode = typeof candidate.feature_code === "string" ? candidate.feature_code : "";
+  if (["MTS", "MT", "PK", "PRK", "PPLA", "PPLC", "ADM1", "ADM2"].includes(featureCode)) {
+    score += 20;
+  }
+
+  // 6. Population weight
+  const population = typeof candidate.population === "number" ? candidate.population : 0;
+  if (population > 500) {
+    score += Math.min(25, Math.log10(population) * 5);
+  }
+
+  // 7. Penalty for prefix collisions that are completely different words (e.g. "Ladākhaman" for "Ladakh")
+  if (normName !== normQuery && !normName.startsWith(`${normQuery} `) && normName.startsWith(normQuery)) {
+    score -= 35;
+  }
+
+  return score;
+}
+
 async function geocode(location: string): Promise<GeoPlace | null> {
-  const key = `geo:${location.toLowerCase()}`;
+  const key = `geo:${location.toLowerCase().trim()}`;
   const cached = getCached<GeoPlace>(key);
   if (cached.fresh) return cached.value;
 
   let place: GeoPlace | null = null;
   try {
     const data = await fetchJson(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`,
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location.trim())}&count=10&language=en&format=json`,
     );
     const results = Array.isArray(data.results) ? (data.results as Record<string, unknown>[]) : [];
-    const first = results[0];
-    if (
-      first !== undefined &&
-      typeof first.name === "string" &&
-      typeof first.latitude === "number" &&
-      typeof first.longitude === "number"
-    ) {
-      place = {
-        name: first.name,
-        region: typeof first.admin1 === "string" ? first.admin1 : null,
-        country: typeof first.country === "string" ? first.country : null,
-        latitude: first.latitude,
-        longitude: first.longitude,
-      };
+    if (results.length > 0) {
+      // Sort candidates by relevance to the human's query
+      const sorted = [...results].sort(
+        (a, b) => scoreGeoCandidate(b, location) - scoreGeoCandidate(a, location),
+      );
+      const best = sorted[0];
+      if (
+        best !== undefined &&
+        typeof best.name === "string" &&
+        typeof best.latitude === "number" &&
+        typeof best.longitude === "number"
+      ) {
+        place = {
+          name: best.name,
+          region: typeof best.admin1 === "string" ? best.admin1 : null,
+          country: typeof best.country === "string" ? best.country : null,
+          latitude: best.latitude,
+          longitude: best.longitude,
+        };
+      }
     }
   } catch (error) {
     console.error("[weather] geocoding failed for", location, error);
