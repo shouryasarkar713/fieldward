@@ -76,7 +76,7 @@ async function main() {
 
   // ── Tool surface ────────────────────────────────────────────────────────
   const tools = buildToolDefinitions();
-  check("buildToolDefinitions returns 16 tools", tools.length === 16, `got ${tools.length}`);
+  check("buildToolDefinitions returns 17 tools", tools.length === 17, `got ${tools.length}`);
   check(
     "tool names match the spec",
     JSON.stringify(tools.map((t) => t.name)) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
@@ -87,7 +87,7 @@ async function main() {
     // a PENDING proposal the human must accept (behaviorally asserted below
     // -- the board does not move until the human resolves it); "order" here
     // would mean commerce/payment semantics.
-    !tools.some((t) => /lock|finali[sz]|export|checkout|payment|buy|reset|clear/i.test(t.name)),
+    !tools.some((t) => /(^|_)(lock|finali[sz]|export|checkout|payment|buy|reset|clear)($|_)/i.test(t.name)),
     "found a human-only action exposed as a tool — this must never happen",
   );
   check(
@@ -760,6 +760,74 @@ async function main() {
   );
   check("dismiss cleared the proposal too", (await exec("get_board_state", {})).pendingDayOrder === null);
 
+  // ── propose_day_block: propose → (pending) → accept / blank / dismiss ─────
+  const dayBlockProp = await exec("propose_day_block", {
+    label: "Day 4 - High Pass Descent",
+    text: "5.5 mi · 2,200 ft descent · Return to trailhead",
+    note: "Final leg breaks up the elevation loss before sunset.",
+  });
+  check("propose_day_block succeeds", dayBlockProp.success === true);
+  check(
+    "propose_day_block returns pending proposal",
+    JSON.stringify(dayBlockProp.proposal).includes("High Pass Descent") &&
+      JSON.stringify(dayBlockProp.proposal).includes("5.5 mi"),
+  );
+
+  const boardWithDayBlock = await exec("get_board_state", {});
+  check(
+    "get_board_state exposes pendingDayBlock",
+    boardWithDayBlock.pendingDayBlock?.label === "Day 4 - High Pass Descent" &&
+      boardWithDayBlock.pendingDayBlock?.text?.includes("5.5 mi"),
+  );
+
+  // Validation
+  const badDayPropNoLabel = await exec("propose_day_block", {});
+  check("propose_day_block without label returns success:false", badDayPropNoLabel.success === false);
+  const badDayPropLongLabel = await exec("propose_day_block", { label: "x".repeat(150) });
+  check("propose_day_block with 150-char label returns success:false", badDayPropLongLabel.success === false);
+  const badDayPropLongText = await exec("propose_day_block", { label: "Day 4", text: "x".repeat(300) });
+  check("propose_day_block with 300-char text returns success:false", badDayPropLongText.success === false);
+
+  // Human resolves with "accept"
+  const acceptDayBlock = await originalFetch(`${BASE}/api/board/day-block/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId: SESSION_ID, decision: "accept" }),
+  });
+  check("human accepts the day block via API", acceptDayBlock.ok);
+  const acceptDayBlockJson = (await acceptDayBlock.json()) as { createdItemId: string; items: Array<{ id: string; label: string; text: string }> };
+  check("accept created the day block item with text", acceptDayBlockJson.items.some((i) => i.label === "Day 4 - High Pass Descent" && i.text?.includes("5.5 mi")));
+
+  const boardAfterDayAccept = await exec("get_board_state", {});
+  check("pendingDayBlock cleared after accept", boardAfterDayAccept.pendingDayBlock === null);
+
+  // Human resolves with "blank"
+  await exec("propose_day_block", {
+    label: "Day 5 - Extra Exploration",
+    text: "3 mi easy loop",
+  });
+  const blankDayBlock = await originalFetch(`${BASE}/api/board/day-block/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId: SESSION_ID, decision: "blank" }),
+  });
+  check("human adds day block as blank", blankDayBlock.ok);
+  const blankDayBlockJson = (await blankDayBlock.json()) as { items: Array<{ label: string; text: string | null }> };
+  check("blank decision creates day block with null text", blankDayBlockJson.items.some((i) => i.label === "Day 5 - Extra Exploration" && i.text === null));
+
+  // Human resolves with "dismiss"
+  await exec("propose_day_block", {
+    label: "Day 6 - Unwanted Day",
+  });
+  const dismissDayBlock = await originalFetch(`${BASE}/api/board/day-block/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId: SESSION_ID, decision: "dismiss" }),
+  });
+  check("human dismisses day block proposal", dismissDayBlock.ok);
+  const dismissDayBlockJson = (await dismissDayBlock.json()) as { items: Array<{ label: string }> };
+  check("dismiss decision created no item", !dismissDayBlockJson.items.some((i) => i.label === "Day 6 - Unwanted Day"));
+
   // ── activity log: agent tool calls + human events, newest first ──────────
   const humanLog = await originalFetch(`${BASE}/api/activity/log`, {
     method: "POST",
@@ -836,6 +904,8 @@ async function main() {
   check("propose_trip_brief_update refused while locked", proposeLocked.success === false);
   const suggestLocked = await exec("suggest_day_order", { orderedBoardItemIds: [dayA, dayB, dayC] });
   check("suggest_day_order refused while locked", suggestLocked.success === false);
+  const proposeDayLocked = await exec("propose_day_block", { label: "Locked Day" });
+  check("propose_day_block refused while locked", proposeDayLocked.success === false);
 
   // Read-only tools still succeed while locked
   const compareDatesLocked = await exec("compare_trip_dates", {
@@ -876,13 +946,13 @@ async function main() {
   };
   await registerFieldwardTools(mockContext);
   check(
-    "registerFieldwardTools registers all 16 tools individually",
-    registered.length === 16 && JSON.stringify(registered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
+    "registerFieldwardTools registers all 17 tools individually",
+    registered.length === 17 && JSON.stringify(registered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
   );
   await unregisterFieldwardTools(mockContext);
   check(
     "unregisterFieldwardTools calls unregisterTool once per tool",
-    unregistered.length === 16 && JSON.stringify(unregistered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
+    unregistered.length === 17 && JSON.stringify(unregistered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
   );
 
   console.log(`\nRESULT: ${passed} passed, ${failed} failed`);

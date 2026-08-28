@@ -16,8 +16,10 @@ export function ProposalBanner({
   title,
   children,
   onAccept,
+  onSecondary,
   onDismiss,
   acceptLabel = "Accept",
+  secondaryLabel,
   dismissLabel = "Dismiss",
 }: {
   /** Lead-in, e.g. "Agent suggests:" — rendered with the spark icon. */
@@ -25,8 +27,10 @@ export function ProposalBanner({
   /** The suggestion itself — plain copy or structured chips. */
   children: React.ReactNode;
   onAccept: () => void;
+  onSecondary?: () => void;
   onDismiss: () => void;
   acceptLabel?: string;
+  secondaryLabel?: string;
   dismissLabel?: string;
 }) {
   return (
@@ -40,13 +44,21 @@ export function ProposalBanner({
         {children}
         <span className="text-ink-faint"> — your call, nothing changes until you accept.</span>
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onAccept}
           className="rounded-md bg-moss-deep px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:bg-pine"
         >
           {acceptLabel}
         </button>
+        {onSecondary !== undefined && secondaryLabel !== undefined ? (
+          <button
+            onClick={onSecondary}
+            className="rounded-md border border-moss/60 bg-paper-raised px-3 py-1.5 text-xs font-medium text-moss-deep transition-colors hover:bg-moss/10"
+          >
+            {secondaryLabel}
+          </button>
+        ) : null}
         <button
           onClick={onDismiss}
           className="flex items-center gap-1.5 rounded-md border border-line-strong bg-paper-raised px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink"

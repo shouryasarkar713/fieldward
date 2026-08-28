@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { DayOrderProposal, TripBriefProposal } from "@/lib/types";
+import type { DayBlockProposal, DayOrderProposal, TripBriefProposal } from "@/lib/types";
 
 /**
  * The generalized pending-proposal mechanism.
@@ -7,9 +7,9 @@ import type { DayOrderProposal, TripBriefProposal } from "@/lib/types";
  * One row per (session, kind): an agent suggests something consequential, the
  * suggestion sits here untouched, and the human resolves it (accept/dismiss)
  * through the matching route. It started life as a bespoke
- * TripBrief.proposalJson column for brief updates; day-order suggestions are
- * the second domain, and the mechanism was extracted so both share one shape,
- * one banner pattern, and one set of semantics:
+ * TripBrief.proposalJson column for brief updates; day-order suggestions and
+ * day-block proposals are subsequent domains, and the mechanism was extracted so
+ * all share one shape, one banner pattern, and one set of semantics:
  *
  *   - propose REPLACES any pending proposal of the same kind (one suggestion
  *     on the table at a time per domain);
@@ -19,7 +19,7 @@ import type { DayOrderProposal, TripBriefProposal } from "@/lib/types";
  *     table, is the durable record of verdicts.
  */
 
-export const PROPOSAL_KINDS = ["brief", "day-order"] as const;
+export const PROPOSAL_KINDS = ["brief", "day-order", "day-block"] as const;
 export type ProposalKind = (typeof PROPOSAL_KINDS)[number];
 
 export function isProposalKind(value: unknown): value is ProposalKind {
@@ -83,6 +83,35 @@ export function parseDayOrderProposal(raw: string | null): DayOrderProposal | nu
 export function serializeDayOrderProposal(proposal: DayOrderProposal): string {
   return JSON.stringify({
     orderedBoardItemIds: proposal.orderedBoardItemIds,
+    ...(proposal.note !== null ? { note: proposal.note } : {}),
+  });
+}
+
+/* ── Day-block payloads: {label, text?, note?} ───────────────────────────── */
+
+export function parseDayBlockProposal(raw: string | null): DayBlockProposal | null {
+  if (raw === null || raw.trim().length === 0) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object") return null;
+    const record = parsed as Record<string, unknown>;
+    if (typeof record.label !== "string" || record.label.trim().length === 0) {
+      return null;
+    }
+    return {
+      label: record.label.trim(),
+      text: typeof record.text === "string" && record.text.trim().length > 0 ? record.text.trim() : null,
+      note: typeof record.note === "string" && record.note.trim().length > 0 ? record.note.trim() : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function serializeDayBlockProposal(proposal: DayBlockProposal): string {
+  return JSON.stringify({
+    label: proposal.label,
+    ...(proposal.text !== null ? { text: proposal.text } : {}),
     ...(proposal.note !== null ? { note: proposal.note } : {}),
   });
 }

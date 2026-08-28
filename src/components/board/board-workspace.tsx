@@ -16,6 +16,7 @@ import { CalendarPlus, Lock, UserCheck } from "lucide-react";
 import { BoardCanvas } from "@/components/board/board-canvas";
 import { LiftedCardBody, TrayDragGhost } from "@/components/board/board-cards";
 import { DateComparisonPanel } from "@/components/board/date-comparison-panel";
+import { DayBlockBanner } from "@/components/board/day-block-banner";
 import { DayOrderBanner } from "@/components/board/day-order-banner";
 import { ExportView } from "@/components/board/export-view";
 import { GearTray } from "@/components/board/gear-tray";
@@ -277,6 +278,7 @@ export function BoardWorkspace({ gear }: { gear: GearItemDTO[] }) {
               />
             )}
 
+            <DayBlockBanner />
             <DayOrderBanner />
 
             <div id="board-frame">

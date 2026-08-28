@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/format";
 import type {
   BoardItemDTO,
   BoardSummary,
+  DayBlockProposal,
   DayOrderProposal,
   GearItemDTO,
   TripBriefDTO,
@@ -75,6 +76,7 @@ export function toBoardSummary(
   items: BoardItemRecord[],
   locked: boolean,
   pendingDayOrder: DayOrderProposal | null = null,
+  pendingDayBlock: DayBlockProposal | null = null,
 ): BoardSummary {
   const dtos = items.map(toBoardItemDTO);
   const gear = dtos.filter((item) => item.itemType === "gear");
@@ -91,6 +93,7 @@ export function toBoardSummary(
     gearTotalDisplay: formatCents(gearTotalCents),
     locked,
     pendingDayOrder,
+    pendingDayBlock,
   };
 }
 

@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { logActivity } from "@/lib/activity";
 import { notifyBoardChanged, pushActivity, subscribeToBoardChanges } from "@/lib/events";
 import { getSessionId } from "@/lib/session";
-import type { BoardItemDTO, BoardSummary, DayOrderProposal } from "@/lib/types";
+import type { BoardItemDTO, BoardSummary, DayBlockProposal, DayOrderProposal } from "@/lib/types";
 
 /**
  * Client-side board state. The board lives on the server (keyed by
@@ -48,6 +48,8 @@ type BoardState = {
   locked: boolean;
   /** The agent's pending day-order suggestion, rendered by the workspace banner. */
   pendingDayOrder: DayOrderProposal | null;
+  /** The agent's pending day-block suggestion, rendered by the workspace banner. */
+  pendingDayBlock: DayBlockProposal | null;
   busyItemIds: string[];
   /** True once init() has run — guards against duplicate polling loops. */
   initialized: boolean;
@@ -73,6 +75,8 @@ type BoardState = {
   removeItem: (boardItemId: string) => Promise<void>;
   /** Human answer to a pending day-order proposal (Accept/Dismiss banner). */
   resolveDayOrder: (decision: "accept" | "dismiss") => Promise<boolean>;
+  /** Human answer to a pending day-block proposal (Accept/Add Blank/Dismiss banner). */
+  resolveDayBlock: (decision: "accept" | "blank" | "dismiss") => Promise<boolean>;
 };
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -107,6 +111,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   gearTotalDisplay: "$0.00",
   locked: false,
   pendingDayOrder: null,
+  pendingDayBlock: null,
   busyItemIds: [],
   initialized: false,
 
@@ -160,9 +165,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         : board.items;
       const dayOrderChanged =
         JSON.stringify(current.pendingDayOrder) !== JSON.stringify(board.pendingDayOrder);
+      const dayBlockChanged =
+        JSON.stringify(current.pendingDayBlock) !== JSON.stringify(board.pendingDayBlock);
       if (
         current.locked !== board.locked ||
         dayOrderChanged ||
+        dayBlockChanged ||
         current.items.length !== board.items.length ||
         current.items.some((item, i) => item.id !== effectiveBoard[i]?.id || boardChanged(item, effectiveBoard[i]))
       ) {
@@ -174,6 +182,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           gearTotalDisplay: board.gearTotalDisplay,
           locked: board.locked,
           pendingDayOrder: board.pendingDayOrder,
+          pendingDayBlock: board.pendingDayBlock,
         });
       } else if (current.sessionId !== sessionId) {
         set({ sessionId });
@@ -402,6 +411,39 @@ export const useBoardStore = create<BoardState>((set, get) => ({
             ? "You accepted the agent's day order."
             : "You dismissed the agent's day order.",
         quiet: true, // the cards visibly rearrange (or don't) — that's the feedback
+      });
+      await get().refresh();
+      return true;
+    } catch {
+      pushActivity({ kind: "error", message: "Couldn't reach the board. Try again." });
+      return false;
+    }
+  },
+
+  resolveDayBlock: async (decision) => {
+    const sessionId = get().sessionId ?? getSessionId();
+    try {
+      const response = await fetch("/api/board/day-block/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, decision }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        pushActivity({ kind: "error", message: body?.error ?? "Couldn't resolve that day block proposal." });
+        await get().refresh();
+        return false;
+      }
+      await logActivity({
+        actor: "human",
+        action: "resolve_day_block_proposal",
+        detail:
+          decision === "accept"
+            ? "You accepted the agent's day block proposal."
+            : decision === "blank"
+              ? "You added the proposed day as a blank block."
+              : "You dismissed the agent's day block proposal.",
+        quiet: true,
       });
       await get().refresh();
       return true;

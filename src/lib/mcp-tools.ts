@@ -59,6 +59,7 @@ export const FIELDWARD_TOOL_NAMES = [
   "get_weather_outlook",
   "compare_trip_dates",
   "propose_trip_brief_update",
+  "propose_day_block",
   "suggest_day_order",
   "check_trip_readiness",
   "get_activity_log",
@@ -556,7 +557,8 @@ export function buildToolDefinitions(): WebMCToolDefinition[] {
             gearTotalCents: data.gearTotalCents,
             gearTotalDisplay: data.gearTotalDisplay,
             locked: data.locked,
-            pendingDayOrder: data.pendingDayOrder,
+            pendingDayOrder: data.pendingDayOrder ?? null,
+            pendingDayBlock: data.pendingDayBlock ?? null,
             items: data.items,
           };
         } catch (error) {
@@ -759,6 +761,82 @@ export function buildToolDefinitions(): WebMCToolDefinition[] {
         } catch (error) {
           console.error("[fieldward:mcp] propose_trip_brief_update failed", error);
           return { success: false, error: "Brief update failed — the board may be unreachable." };
+        }
+      },
+    },
+    {
+      name: "propose_day_block",
+      description:
+        "Propose adding a new day block to the itinerary with a trail title and optional distance/elevation details and reasoning (e.g. 'Day 1 — Trailhead to Cairn Lake', '6.2 mi · 1,900 ft gain · Alpine meadow camp'). This lands as a PENDING suggestion the human accepts (with details), adds as a blank day, or dismisses in the board UI; it never places the card directly. Use this to help the human structure their route day-by-day without forcing unapproved itinerary onto their board.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          label: {
+            type: "string",
+            description: "Title of the day block, e.g. 'Day 1 — Trailhead to Cairn Lake'",
+          },
+          text: {
+            type: "string",
+            description: "Optional trail segment summary, distance, or elevation notes, e.g. '6.2 mi · 1,900 ft gain · Alpine meadow camp'",
+          },
+          note: {
+            type: "string",
+            description: "Optional reasoning for this itinerary day, e.g. 'Breaks up the pass ascent before tomorrow morning.'",
+          },
+        },
+        required: ["label"],
+      },
+      execute: async (input) => {
+        logToolCall("propose_day_block", input);
+        try {
+          const label = asString(input.label);
+          if (label === undefined) {
+            return { success: false, error: 'Input "label" is required and cannot be empty.' };
+          }
+          if (label.length > 120) {
+            return { success: false, error: 'Input "label" must be at most 120 characters.' };
+          }
+          const text = asString(input.text);
+          if (text !== undefined && text.length > 280) {
+            return { success: false, error: 'Input "text" must be at most 280 characters.' };
+          }
+          const note = asString(input.note);
+          if (note !== undefined && note.length > 280) {
+            return { success: false, error: 'Input "note" must be at most 280 characters.' };
+          }
+
+          const { ok, status, data } = await callJsonApi("/api/board/day-block/propose", {
+            method: "POST",
+            body: JSON.stringify({
+              sessionId: getSessionId(),
+              label,
+              ...(text !== undefined ? { text } : {}),
+              ...(note !== undefined ? { note } : {}),
+            }),
+          });
+          if (!ok) {
+            return {
+              success: false,
+              error: apiError(
+                data,
+                status === 409 ? "This plan is locked — the board is read-only." : "Couldn't propose that day block.",
+              ),
+            };
+          }
+          const noteSuffix = note !== undefined ? ` — “${excerpt(note)}”` : "";
+          await logAgentAction(
+            "propose_day_block",
+            `Agent proposed a day block: ${label}${noteSuffix}`,
+          );
+          notifyBoardChanged();
+          return {
+            success: true,
+            proposal: data.proposal,
+            note: "Pending until the human accepts or dismisses it in the board UI.",
+          };
+        } catch (error) {
+          console.error("[fieldward:mcp] propose_day_block failed", error);
+          return { success: false, error: "Day block proposal failed — the board may be unreachable." };
         }
       },
     },

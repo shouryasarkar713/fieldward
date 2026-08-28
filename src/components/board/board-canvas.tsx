@@ -2,7 +2,7 @@
 
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 
-import { CheckCircle2, PackageCheck } from "lucide-react";
+import { CheckCircle2, Compass, PackageCheck } from "lucide-react";
 
 import { DayCardBody, GearCardBody } from "@/components/board/board-cards";
 import { BOARD_HEIGHT, BOARD_WIDTH, OWNED_ZONE_BOUNDARY_Y } from "@/lib/board-geometry";
@@ -90,17 +90,27 @@ export function BoardCanvas({
           </span>
         </div>
 
-        {/* Lane Header 2: To Pack & Acquire */}
+        {/* Route Spine Guide: Left column boundary below top lane */}
+        <div
+          className="pointer-events-none absolute border-r border-dashed border-line/70"
+          style={{
+            left: 320,
+            top: OWNED_ZONE_BOUNDARY_Y,
+            height: BOARD_HEIGHT - OWNED_ZONE_BOUNDARY_Y,
+          }}
+        />
+
+        {/* Lane Header 2: Route Spine & To Pack */}
         <div
           className="pointer-events-none absolute left-12 flex select-none items-center gap-2.5"
           style={{ top: OWNED_ZONE_BOUNDARY_Y + 16 }}
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-paper-raised/90 px-3 py-1 text-xs font-medium text-ink-soft shadow-2xs">
-            <PackageCheck className="h-3.5 w-3.5" strokeWidth={2} />
-            Need to Get / To Pack
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rust/30 bg-paper-raised/90 px-3 py-1 text-xs font-medium text-rust shadow-2xs">
+            <Compass className="h-3.5 w-3.5" strokeWidth={2} />
+            Route Itinerary Spine
           </span>
           <span className="text-xs text-ink-faint">
-            Required gear & day blocks · Drag items between zones to change status
+            Day blocks sequence (left) · Pack & gear staging (right)
           </span>
         </div>
 

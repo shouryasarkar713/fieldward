@@ -116,17 +116,29 @@ async function main() {
   check("3c. human places cook gear near Day 2", humanPlace.ok && (humanPlace.body.item as Record<string, unknown>)?.addedBy === "human");
   await humanAction("place_gear", `You placed ${stove.name} on the board.`);
 
+  // ── 3d. Agent proposes Day 3, Human accepts ─────────────────────────────
+  console.log("── Agent: propose_day_block (Day 3 summit push) → Human: accepts");
+  const proposeDay = await exec("propose_day_block", {
+    label: "Day 3 — Saddle to Summit",
+    text: "4 mi · technical scramble",
+    note: "Summit push before weather closes in.",
+  });
+  check("3d. agent proposes Day 3 as pending", proposeDay.success === true && String((proposeDay.proposal as Record<string, unknown>)?.label).includes("Day 3"));
+  const acceptDay = await api("/api/board/day-block/resolve", json({ sessionId: SESSION_ID, decision: "accept" }));
+  check("3e. human accepts Day 3 block proposal", acceptDay.ok && ((acceptDay.body.items ?? []) as Array<Record<string, unknown>>).some((i) => String(i.label).includes("Day 3")));
+  await humanAction("resolve_day_block_proposal", "You accepted the agent's day block proposal.");
+
   // ── 4. Agent re-grounds: brief + board + log before acting ───────────────
   console.log("── Agent: get_trip_brief + get_board_state + get_activity_log");
   const briefRead = await exec("get_trip_brief", {});
   const boardRead = await exec("get_board_state", {});
   const logRead = await exec("get_activity_log", { limit: 30 });
   check("4. agent sees the accepted trip", (briefRead.brief as Record<string, unknown>)?.tripDescription?.includes("winter"));
-  check("4b. agent sees the human's 2 day blocks + 1 gear card", (boardRead.itemCount as number) === 1 && ((boardRead.items ?? []) as unknown[]).filter((i) => (i as Record<string, unknown>).itemType === "day").length === 2);
+  check("4b. agent sees the human's 3 day blocks + 1 gear card", (boardRead.itemCount as number) === 1 && ((boardRead.items ?? []) as unknown[]).filter((i) => (i as Record<string, unknown>).itemType === "day").length === 3);
   const logEvents = (logRead.events ?? []) as Array<Record<string, unknown>>;
   check(
     "4c. activity log shows the human's day blocks to the agent",
-    logEvents.some((e) => e.actor === "human" && e.action === "place_day"),
+    logEvents.some((e) => e.actor === "human" && (e.action === "place_day" || e.action === "resolve_day_block_proposal")),
   );
 
   // ── 5. Human grounds the trip in a real place and dates ─────────────────
@@ -235,10 +247,10 @@ async function main() {
     (a, b) => (a.y as number) - (b.y as number) || (a.x as number) - (b.x as number),
   );
   const dayIds = orderedByY.map((item) => item.id as string);
-  check("7. agent reads both day blocks in board order", dayIds.length === 2);
+  check("7. agent reads all three day blocks in board order", dayIds.length === 3);
 
   const suggestOrder = await exec("suggest_day_order", {
-    orderedBoardItemIds: [dayIds[1], dayIds[0]],
+    orderedBoardItemIds: [dayIds[1], dayIds[0], dayIds[2]],
     note: "The pass is calmer before the storm window — lake camp first.",
   });
   check(
@@ -258,12 +270,12 @@ async function main() {
   const acceptedDays = acceptedItems
     .filter((item) => item.itemType === "day")
     .sort((a, b) => (a.y as number) - (b.y as number));
-  check("7d. human accepted the day order — both blocks traded slots", acceptOrder.ok && acceptOrder.body.movedCount === 2);
+  check("7d. human accepted the day order — blocks traded slots", acceptOrder.ok && acceptOrder.body.movedCount === 2);
   check("7e. the board now reads Day 2 first (the accepted proposal)", String(acceptedDays[0]?.label).startsWith("Day 2"));
   await humanAction("resolve_day_order_proposal", "You accepted the agent's day order.");
 
   // A second suggestion, dismissed: nothing moves.
-  const suggestAgain = await exec("suggest_day_order", { orderedBoardItemIds: [dayIds[0], dayIds[1]] });
+  const suggestAgain = await exec("suggest_day_order", { orderedBoardItemIds: [dayIds[0], dayIds[1], dayIds[2]] });
   check("7f. second day-order suggestion lands pending", suggestAgain.success === true);
   const dismissOrder = await api("/api/board/day-order/resolve", json({ sessionId: SESSION_ID, decision: "dismiss" }));
   const dismissedItems = (dismissOrder.body.items ?? []) as Array<Record<string, unknown>>;

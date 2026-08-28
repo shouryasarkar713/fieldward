@@ -75,6 +75,8 @@ export type BoardSummary = {
   locked: boolean;
   /** The agent's pending day-order suggestion, when one awaits the human's call. */
   pendingDayOrder: DayOrderProposal | null;
+  /** The agent's pending day-block suggestion, when one awaits the human's call. */
+  pendingDayBlock: DayBlockProposal | null;
 };
 
 /** A pending agent suggestion for the trip brief — never applied until accepted. */
@@ -82,6 +84,15 @@ export type TripBriefProposal = {
   tripDescription?: string;
   /** Budget in cents; null means the proposal clears the budget. */
   budget: number | null;
+};
+
+/**
+ * A pending agent suggestion for adding a day block to the itinerary.
+ */
+export type DayBlockProposal = {
+  label: string;
+  text: string | null;
+  note: string | null;
 };
 
 /**
