@@ -16,6 +16,8 @@ node_modules
 # misc
 .DS_Store
 *.pem
+AGENTS.md
+CLAUDE.md
 
 # debug logs
 npm-debug.log*
