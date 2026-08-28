@@ -43,6 +43,7 @@ export type GearItemMinAggregateOutputType = {
   tags: string | null
   imageUrl: string | null
   availability: string | null
+  source: string | null
 }
 
 export type GearItemMaxAggregateOutputType = {
@@ -54,6 +55,7 @@ export type GearItemMaxAggregateOutputType = {
   tags: string | null
   imageUrl: string | null
   availability: string | null
+  source: string | null
 }
 
 export type GearItemCountAggregateOutputType = {
@@ -65,6 +67,7 @@ export type GearItemCountAggregateOutputType = {
   tags: number
   imageUrl: number
   availability: number
+  source: number
   _all: number
 }
 
@@ -86,6 +89,7 @@ export type GearItemMinAggregateInputType = {
   tags?: true
   imageUrl?: true
   availability?: true
+  source?: true
 }
 
 export type GearItemMaxAggregateInputType = {
@@ -97,6 +101,7 @@ export type GearItemMaxAggregateInputType = {
   tags?: true
   imageUrl?: true
   availability?: true
+  source?: true
 }
 
 export type GearItemCountAggregateInputType = {
@@ -108,6 +113,7 @@ export type GearItemCountAggregateInputType = {
   tags?: true
   imageUrl?: true
   availability?: true
+  source?: true
   _all?: true
 }
 
@@ -206,6 +212,7 @@ export type GearItemGroupByOutputType = {
   tags: string
   imageUrl: string
   availability: string
+  source: string
   _count: GearItemCountAggregateOutputType | null
   _avg: GearItemAvgAggregateOutputType | null
   _sum: GearItemSumAggregateOutputType | null
@@ -240,6 +247,7 @@ export type GearItemWhereInput = {
   tags?: Prisma.StringFilter<"GearItem"> | string
   imageUrl?: Prisma.StringFilter<"GearItem"> | string
   availability?: Prisma.StringFilter<"GearItem"> | string
+  source?: Prisma.StringFilter<"GearItem"> | string
   boardItems?: Prisma.BoardItemListRelationFilter
 }
 
@@ -252,6 +260,7 @@ export type GearItemOrderByWithRelationInput = {
   tags?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   availability?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   boardItems?: Prisma.BoardItemOrderByRelationAggregateInput
 }
 
@@ -267,6 +276,7 @@ export type GearItemWhereUniqueInput = Prisma.AtLeast<{
   tags?: Prisma.StringFilter<"GearItem"> | string
   imageUrl?: Prisma.StringFilter<"GearItem"> | string
   availability?: Prisma.StringFilter<"GearItem"> | string
+  source?: Prisma.StringFilter<"GearItem"> | string
   boardItems?: Prisma.BoardItemListRelationFilter
 }, "id">
 
@@ -279,6 +289,7 @@ export type GearItemOrderByWithAggregationInput = {
   tags?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   availability?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   _count?: Prisma.GearItemCountOrderByAggregateInput
   _avg?: Prisma.GearItemAvgOrderByAggregateInput
   _max?: Prisma.GearItemMaxOrderByAggregateInput
@@ -298,6 +309,7 @@ export type GearItemScalarWhereWithAggregatesInput = {
   tags?: Prisma.StringWithAggregatesFilter<"GearItem"> | string
   imageUrl?: Prisma.StringWithAggregatesFilter<"GearItem"> | string
   availability?: Prisma.StringWithAggregatesFilter<"GearItem"> | string
+  source?: Prisma.StringWithAggregatesFilter<"GearItem"> | string
 }
 
 export type GearItemCreateInput = {
@@ -309,6 +321,7 @@ export type GearItemCreateInput = {
   tags: string
   imageUrl: string
   availability?: string
+  source?: string
   boardItems?: Prisma.BoardItemCreateNestedManyWithoutGearItemInput
 }
 
@@ -321,6 +334,7 @@ export type GearItemUncheckedCreateInput = {
   tags: string
   imageUrl: string
   availability?: string
+  source?: string
   boardItems?: Prisma.BoardItemUncheckedCreateNestedManyWithoutGearItemInput
 }
 
@@ -333,6 +347,7 @@ export type GearItemUpdateInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   boardItems?: Prisma.BoardItemUpdateManyWithoutGearItemNestedInput
 }
 
@@ -345,6 +360,7 @@ export type GearItemUncheckedUpdateInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   boardItems?: Prisma.BoardItemUncheckedUpdateManyWithoutGearItemNestedInput
 }
 
@@ -357,6 +373,7 @@ export type GearItemCreateManyInput = {
   tags: string
   imageUrl: string
   availability?: string
+  source?: string
 }
 
 export type GearItemUpdateManyMutationInput = {
@@ -368,6 +385,7 @@ export type GearItemUpdateManyMutationInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type GearItemUncheckedUpdateManyInput = {
@@ -379,6 +397,7 @@ export type GearItemUncheckedUpdateManyInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type GearItemCountOrderByAggregateInput = {
@@ -390,6 +409,7 @@ export type GearItemCountOrderByAggregateInput = {
   tags?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   availability?: Prisma.SortOrder
+  source?: Prisma.SortOrder
 }
 
 export type GearItemAvgOrderByAggregateInput = {
@@ -405,6 +425,7 @@ export type GearItemMaxOrderByAggregateInput = {
   tags?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   availability?: Prisma.SortOrder
+  source?: Prisma.SortOrder
 }
 
 export type GearItemMinOrderByAggregateInput = {
@@ -416,6 +437,7 @@ export type GearItemMinOrderByAggregateInput = {
   tags?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   availability?: Prisma.SortOrder
+  source?: Prisma.SortOrder
 }
 
 export type GearItemSumOrderByAggregateInput = {
@@ -464,6 +486,7 @@ export type GearItemCreateWithoutBoardItemsInput = {
   tags: string
   imageUrl: string
   availability?: string
+  source?: string
 }
 
 export type GearItemUncheckedCreateWithoutBoardItemsInput = {
@@ -475,6 +498,7 @@ export type GearItemUncheckedCreateWithoutBoardItemsInput = {
   tags: string
   imageUrl: string
   availability?: string
+  source?: string
 }
 
 export type GearItemCreateOrConnectWithoutBoardItemsInput = {
@@ -502,6 +526,7 @@ export type GearItemUpdateWithoutBoardItemsInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type GearItemUncheckedUpdateWithoutBoardItemsInput = {
@@ -513,6 +538,7 @@ export type GearItemUncheckedUpdateWithoutBoardItemsInput = {
   tags?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
   availability?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 
@@ -555,6 +581,7 @@ export type GearItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   tags?: boolean
   imageUrl?: boolean
   availability?: boolean
+  source?: boolean
   boardItems?: boolean | Prisma.GearItem$boardItemsArgs<ExtArgs>
   _count?: boolean | Prisma.GearItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["gearItem"]>
@@ -568,6 +595,7 @@ export type GearItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   tags?: boolean
   imageUrl?: boolean
   availability?: boolean
+  source?: boolean
 }, ExtArgs["result"]["gearItem"]>
 
 export type GearItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -579,6 +607,7 @@ export type GearItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   tags?: boolean
   imageUrl?: boolean
   availability?: boolean
+  source?: boolean
 }, ExtArgs["result"]["gearItem"]>
 
 export type GearItemSelectScalar = {
@@ -590,9 +619,10 @@ export type GearItemSelectScalar = {
   tags?: boolean
   imageUrl?: boolean
   availability?: boolean
+  source?: boolean
 }
 
-export type GearItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "price" | "category" | "tags" | "imageUrl" | "availability", ExtArgs["result"]["gearItem"]>
+export type GearItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "price" | "category" | "tags" | "imageUrl" | "availability" | "source", ExtArgs["result"]["gearItem"]>
 export type GearItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   boardItems?: boolean | Prisma.GearItem$boardItemsArgs<ExtArgs>
   _count?: boolean | Prisma.GearItemCountOutputTypeDefaultArgs<ExtArgs>
@@ -614,6 +644,7 @@ export type $GearItemPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     tags: string
     imageUrl: string
     availability: string
+    source: string
   }, ExtArgs["result"]["gearItem"]>
   composites: {}
 }
@@ -1046,6 +1077,7 @@ export interface GearItemFieldRefs {
   readonly tags: Prisma.FieldRef<"GearItem", 'String'>
   readonly imageUrl: Prisma.FieldRef<"GearItem", 'String'>
   readonly availability: Prisma.FieldRef<"GearItem", 'String'>
+  readonly source: Prisma.FieldRef<"GearItem", 'String'>
 }
     
 

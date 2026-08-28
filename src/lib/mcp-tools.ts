@@ -51,11 +51,13 @@ export const FIELDWARD_TOOL_NAMES = [
   "get_gear_details",
   "compare_gear",
   "place_on_board",
+  "mark_item_owned",
   "move_board_item",
   "remove_from_board",
   "get_board_state",
   "get_trip_brief",
   "get_weather_outlook",
+  "compare_trip_dates",
   "propose_trip_brief_update",
   "suggest_day_order",
   "check_trip_readiness",
@@ -372,6 +374,76 @@ export function buildToolDefinitions(): WebMCToolDefinition[] {
       },
     },
     {
+      name: "mark_item_owned",
+      description:
+        "Mark a piece of gear that the user already owns (e.g. from a photo of their gear closet or mentioned in chat). Fuzzy-matches against existing catalog gear or registers personal gear. Places it into the 'Already have' lane on the board. Fully satisfies readiness check requirements without consuming the trip's gear acquisition budget.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name of the owned gear item, e.g. 'Hollowpine 2P Tent' or 'Grandpa's Wool Blanket'" },
+          category: {
+            type: "string",
+            description: "Optional category, e.g. 'Shelter', 'Backpacks', 'Footwear', 'Cook Gear', or 'Other'",
+          },
+          note: {
+            type: "string",
+            description: "Optional note or reasoning for this owned item",
+          },
+        },
+        required: ["name"],
+      },
+      execute: async (input) => {
+        logToolCall("mark_item_owned", input);
+        try {
+          const name = asString(input.name);
+          if (name === undefined) {
+            return { success: false, error: 'Input "name" (non-empty string) is required.' };
+          }
+          const category = asString(input.category);
+          const note = asString(input.note);
+          if (note !== undefined && note.length > 280) {
+            return { success: false, error: 'Input "note" must be at most 280 characters.' };
+          }
+
+          const { ok, status, data } = await callJsonApi("/api/gear/owned", {
+            method: "POST",
+            body: JSON.stringify({
+              sessionId: getSessionId(),
+              name,
+              ...(category !== undefined ? { category } : {}),
+              ...(note !== undefined ? { note } : {}),
+            }),
+          });
+
+          if (!ok) {
+            return {
+              success: false,
+              error: apiError(data, "Couldn't mark that item as owned on the board."),
+            };
+          }
+
+          const item = data.item as { name?: string } | undefined;
+          const matchedExisting = Boolean(data.matchedExisting);
+          const detail = matchedExisting
+            ? `Agent marked ${item?.name ?? name} as already owned (matched catalog item)`
+            : `Agent added personal owned gear: ${name}`;
+
+          await logAgentAction("mark_item_owned", detail);
+          notifyBoardChanged();
+          return {
+            success: true,
+            item: data.item,
+            matchedExisting,
+            ownership: "owned",
+            note: "Placed in 'Already have' zone. Satisfies readiness requirements with $0 budget impact.",
+          };
+        } catch (error) {
+          console.error("[fieldward:mcp] mark_item_owned failed", error);
+          return { success: false, error: "Marking owned item failed — the board may be unreachable." };
+        }
+      },
+    },
+    {
       name: "move_board_item",
       description:
         "Move a card that's already on the board — yours or the human's — to a new position. Coordinates are board pixels (x: 0–2400, y: 0–1600, origin top-left, clamped to the board). Use it to arrange the plan: group cook gear under the Day 2 block, line up shelter options together, tidy after the human drags things around. The card animates to its new spot on the human's screen, exactly like their own drags.",
@@ -558,6 +630,81 @@ export function buildToolDefinitions(): WebMCToolDefinition[] {
         } catch (error) {
           console.error("[fieldward:mcp] get_weather_outlook failed", error);
           return { success: false, error: "Weather lookup failed — the board may be unreachable." };
+        }
+      },
+    },
+    {
+      name: "compare_trip_dates",
+      description:
+        "Compare 2–3 candidate date ranges for the trip side-by-side without modifying the stored trip brief. Concurrently evaluates live Open-Meteo forecasts (near-term) or historical averages (future) along with readiness gaps for each window independently. Returns a side-by-side preview with honest dataSource labels per range.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          dateRanges: {
+            type: "array",
+            description: "2 or 3 candidate date ranges to compare",
+            items: {
+              type: "object",
+              properties: {
+                startDate: { type: "string", description: "First trip day in YYYY-MM-DD format" },
+                endDate: { type: "string", description: "Last trip day in YYYY-MM-DD format" },
+                label: { type: "string", description: "Optional friendly label, e.g. 'Option A: Early September'" },
+              },
+              required: ["startDate", "endDate"],
+            },
+          },
+        },
+        required: ["dateRanges"],
+      },
+      execute: async (input) => {
+        logToolCall("compare_trip_dates", input);
+        try {
+          const rawRanges = input.dateRanges;
+          if (!Array.isArray(rawRanges) || rawRanges.length < 2 || rawRanges.length > 3) {
+            return { success: false, error: 'Input "dateRanges" must be an array of 2 or 3 date ranges.' };
+          }
+
+          const sessionId = getSessionId();
+          const { ok, data } = await callJsonApi("/api/weather/compare", {
+            method: "POST",
+            body: JSON.stringify({
+              sessionId,
+              dateRanges: rawRanges,
+            }),
+          });
+
+          if (!ok) {
+            return { success: false, error: apiError(data, "Couldn't compare candidate trip dates.") };
+          }
+
+          const comparisons = (Array.isArray(data.comparisons) ? data.comparisons : []) as Array<{
+            label?: string;
+            startDate: string;
+            endDate: string;
+            weather: { dataSource: string; summary?: string; reason?: string };
+            readiness: { gaps: string[]; covered: string[] };
+          }>;
+
+          const summaryLines = comparisons.map((c) => {
+            const label = c.label || `${c.startDate} → ${c.endDate}`;
+            const weatherDesc = c.weather.summary || c.weather.reason || c.weather.dataSource;
+            return `${label}: [${c.weather.dataSource}] ${weatherDesc}`;
+          });
+
+          await logAgentAction(
+            "compare_trip_dates",
+            `Agent compared ${comparisons.length} candidate date ranges: ${summaryLines.join(" | ")}`,
+          );
+
+          return {
+            success: true,
+            location: data.location,
+            comparisonCount: comparisons.length,
+            comparisons: data.comparisons,
+          };
+        } catch (error) {
+          console.error("[fieldward:mcp] compare_trip_dates failed", error);
+          return { success: false, error: "Date comparison failed — the board may be unreachable." };
         }
       },
     },

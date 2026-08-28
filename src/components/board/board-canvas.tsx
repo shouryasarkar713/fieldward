@@ -2,8 +2,10 @@
 
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 
+import { CheckCircle2, PackageCheck } from "lucide-react";
+
 import { DayCardBody, GearCardBody } from "@/components/board/board-cards";
-import { BOARD_HEIGHT, BOARD_WIDTH } from "@/lib/board-geometry";
+import { BOARD_HEIGHT, BOARD_WIDTH, OWNED_ZONE_BOUNDARY_Y } from "@/lib/board-geometry";
 import { useBoardStore } from "@/lib/board-store";
 import type { BoardItemDTO } from "@/lib/types";
 
@@ -71,6 +73,37 @@ export function BoardCanvas({
       className="thin-scroll h-[560px] overflow-auto rounded-md border border-line bg-sand/40 lg:h-[680px]"
     >
       <div ref={contentRef} className="board-grid relative" style={{ width: BOARD_WIDTH, height: BOARD_HEIGHT }}>
+        {/* Visual Zone: Top Lane ("Already Have / Owned") */}
+        <div
+          className="pointer-events-none absolute left-0 top-0 w-full border-b border-dashed border-pine/35 bg-pine/[0.035]"
+          style={{ height: OWNED_ZONE_BOUNDARY_Y }}
+        />
+        
+        {/* Lane Header 1: Already Have */}
+        <div className="pointer-events-none absolute left-12 top-4 flex select-none items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-pine/30 bg-paper-raised/90 px-3 py-1 text-xs font-medium text-pine shadow-2xs">
+            <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+            Already Have (Owned)
+          </span>
+          <span className="text-xs text-ink-faint">
+            Gear you own · Satisfies readiness checklist with $0 budget spend
+          </span>
+        </div>
+
+        {/* Lane Header 2: To Pack & Acquire */}
+        <div
+          className="pointer-events-none absolute left-12 flex select-none items-center gap-2.5"
+          style={{ top: OWNED_ZONE_BOUNDARY_Y + 16 }}
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-paper-raised/90 px-3 py-1 text-xs font-medium text-ink-soft shadow-2xs">
+            <PackageCheck className="h-3.5 w-3.5" strokeWidth={2} />
+            Need to Get / To Pack
+          </span>
+          <span className="text-xs text-ink-faint">
+            Required gear & day blocks · Drag items between zones to change status
+          </span>
+        </div>
+
         {items.length === 0 && (
           <div className="absolute left-48 top-48 max-w-md">
             <p className="font-serif text-2xl leading-snug tracking-tight text-ink-soft">

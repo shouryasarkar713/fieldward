@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { logActivity } from "@/lib/activity";
 import { subscribeToBriefChanges } from "@/lib/events";
 import { getSessionId } from "@/lib/session";
-import type { TripBriefDTO } from "@/lib/types";
+import type { DateRangeComparison, TripBriefDTO } from "@/lib/types";
 
 /**
  * Client-side trip-brief state — the shared "what trip are we planning"
@@ -25,11 +25,13 @@ type BriefState = {
   sessionId: string | null;
   brief: TripBriefDTO | null;
   loaded: boolean;
+  dateComparisons: DateRangeComparison[] | null;
   /** True once init() has run — guards against duplicate polling loops. */
   initialized: boolean;
 
   init: () => void;
   refresh: () => Promise<void>;
+  setDateComparisons: (comparisons: DateRangeComparison[] | null) => void;
   /** Human direct edit from the brief panel. Budget in CENTS; place/dates optional. */
   save: (input: {
     tripDescription: string;
@@ -68,7 +70,10 @@ export const useBriefStore = create<BriefState>((set, get) => ({
   sessionId: null,
   brief: null,
   loaded: false,
+  dateComparisons: null,
   initialized: false,
+
+  setDateComparisons: (comparisons) => set({ dateComparisons: comparisons }),
 
   init: () => {
     if (get().initialized) return;

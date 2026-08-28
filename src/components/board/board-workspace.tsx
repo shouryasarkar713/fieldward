@@ -15,6 +15,7 @@ import { CalendarPlus, Lock, UserCheck } from "lucide-react";
 
 import { BoardCanvas } from "@/components/board/board-canvas";
 import { LiftedCardBody, TrayDragGhost } from "@/components/board/board-cards";
+import { DateComparisonPanel } from "@/components/board/date-comparison-panel";
 import { DayOrderBanner } from "@/components/board/day-order-banner";
 import { ExportView } from "@/components/board/export-view";
 import { GearTray } from "@/components/board/gear-tray";
@@ -64,6 +65,9 @@ export function BoardWorkspace({ gear }: { gear: GearItemDTO[] }) {
   const placeDay = useBoardStore((state) => state.placeDay);
   const moveItem = useBoardStore((state) => state.moveItem);
   const lockPlan = useBriefStore((state) => state.lock);
+  const dateComparisons = useBriefStore((state) => state.dateComparisons);
+  const setDateComparisons = useBriefStore((state) => state.setDateComparisons);
+  const briefLocation = useBriefStore((state) => state.brief?.location);
 
   const [confirmingLock, setConfirmingLock] = useState(false);
   const [locking, setLocking] = useState(false);
@@ -264,6 +268,14 @@ export function BoardWorkspace({ gear }: { gear: GearItemDTO[] }) {
               <UserCheck aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
               Your agent can place, move, and suggest — but only you can lock the plan.
             </p>
+
+            {dateComparisons && dateComparisons.length > 0 && (
+              <DateComparisonPanel
+                comparisons={dateComparisons}
+                location={briefLocation ?? null}
+                onClose={() => setDateComparisons(null)}
+              />
+            )}
 
             <DayOrderBanner />
 

@@ -6,7 +6,7 @@ Built for **The WebMCP Challenge**.
 
 ## The one idea
 
-Open Fieldward in a WebMCP-capable browser (or alongside a WebMCP client) and your agent gets exactly fourteen tools: it can read the trip brief, pull a real weather outlook for the trip's place and dates, search and compare gear, place cards on the board, move them, annotate its picks with a short first-person reason, check the board's readiness against the trip *and* the forecast, and catch up on what you've been doing. Everything it places animates onto the board live — exactly like your own drags — tagged **"Placed by agent"**, with a quiet toast narrating what it just did.
+Open Fieldward in a WebMCP-capable browser (or alongside a WebMCP client) and your agent gets exactly sixteen tools: it can read the trip brief, pull a real weather outlook for the trip's place and dates, search and compare gear, place cards on the board, move them, annotate its picks with a short first-person reason, check the board's readiness against the trip *and* the forecast, and catch up on what you've been doing. Everything it places animates onto the board live — exactly like your own drags — tagged **"Placed by agent"**, with a quiet toast narrating what it just did.
 
 What the agent never gets is the final say. There is no `lock_plan` tool, no `export` tool, no `reset` tool — and no way to reach those endpoints through the tool surface. The button that locks the plan lives in a React `onClick` handler, and while a plan is locked every mutation route answers `409`, so even a rogue tool can only read. And whenever the agent wants to change something consequential — the trip brief, or the order your days run in — it doesn't overwrite anything: it leaves a pending suggestion you accept or dismiss. Same mechanism, same banner, two domains.
 
@@ -58,7 +58,7 @@ for (const name of FIELDWARD_TOOL_NAMES) {
 
 If `document.modelContext` isn't there yet at load (some runtimes attach it late), the provider retries every 2s for 30s and also listens for a `fieldward:mcp-ready` event. Browsers without WebMCP simply get no tools — the board works fully for humans either way.
 
-### The fourteen tools
+### The sixteen tools
 
 | Tool | What it does |
 | --- | --- |
@@ -66,16 +66,18 @@ If `document.modelContext` isn't there yet at load (some runtimes attach it late
 | `filter_gear` | Filter by category, price range (dollars), and tags |
 | `get_gear_details` | Full record for one gear item id |
 | `compare_gear` | Side-by-side comparison of 2–4 items |
+| `mark_item_owned` | Mark an item as already owned by the human (fuzzy match against catalog or custom personal gear) — places in the "Already Have" top lane, satisfies trip readiness checklist, and adds $0 to acquisition budget spend |
 | `place_on_board` | Put a gear item on the shared board (always attributed to the agent, optional first-person `note` rendered beside the card; omit x/y and the server picks the next open slot — the agent never does layout math) |
-| `move_board_item` | Move any card — the agent's or the human's — to a new position (e.g. group cook gear under Day 2). The card glides to its new spot on the human's screen |
+| `move_board_item` | Move any card — the agent's or the human's — to a new position (e.g. group cook gear under Day 2 or drag into the "Already Have" zone). The card glides to its new spot on the human's screen |
 | `remove_from_board` | Remove one card by board-item id |
-| `get_board_state` | Read the whole board: positions, notes, attribution, totals, locked state, any pending day-order proposal |
+| `get_board_state` | Read the whole board: positions, notes, attribution, totals, ownership status, locked state, any pending day-order proposal |
 | `get_trip_brief` | Read the trip description, budget, place, and dates — the grounding document; meant to be called before searching or recommending |
 | `get_weather_outlook` | The real weather outlook for the trip's place and dates (Open-Meteo, no API key): a **real daily forecast** when the trip is within ~16 days, an honest **historical seasonal average** when it's further out, or a clear "unavailable" with a reason — the state is always labeled, never blurred. Meant to be called early in a session, before searching gear |
+| `compare_trip_dates` | Side-by-side weather and readiness comparison across 2–3 candidate date ranges for the trip destination, with independent forecast/historical labels per window |
 | `propose_trip_brief_update` | Suggest a change to the trip brief — lands as a **pending proposal** the human must accept or dismiss; never overwrites |
 | `suggest_day_order` | Suggest a new order for the human's day blocks (e.g. "summit day first — calmer before the storm") — lands as a **pending proposal** with the same accept/dismiss banner; the board never reorders itself, and day blocks stay human-authored (`403` for the agent, unchanged) |
 | `get_activity_log` | Catch up on what the human (and agent) have been doing recently — views, placements, moves, brief edits, proposal verdicts, tool calls |
-| `check_trip_readiness` | Read-only check of the board against the trip *and its weather* — one coherent result: "no winter-rated sleep system on the board", "rain likely on day 2 — no board item tagged waterproof yet" |
+| `check_trip_readiness` | Read-only check of the board against the trip *and its weather* — one coherent result: "no winter-rated sleep system on the board", "rain likely on day 2 — no board item tagged waterproof yet", accounting for both owned and planned gear |
 
 Every `execute` is wrapped in try/catch and returns `{ success: false, error }` instead of throwing. `place_on_board` hardcodes `addedBy: "agent"` server-side — attribution is never taken from tool input. Each tool call lands in the shared activity log, which drives both the on-screen activity strip and the `get_activity_log` tool (one source of truth).
 
@@ -95,6 +97,8 @@ A seeded SQLite file ships in `db/`, so the gear library is there even before yo
 **To see the agent half of the demo**, open the board in a browser with WebMCP support and ask your agent something like:
 
 - *"I'm planning a 3-day winter backpacking trip with a $500 budget — propose that as the trip brief, then build out the kit."* (propose_trip_brief_update → you accept → search_gear → place_on_board with notes)
+- *"I already have a Nightfall 20° Sleeping Bag in my closet."* (mark_item_owned → lands in Already Have lane, satisfies sleep system requirement at $0 budget cost)
+- *"Compare September 5–8 versus November 15–18 for the North Cascades."* (compare_trip_dates → side-by-side weather + readiness preview with one-click brief selection)
 - *"Add a day block for the summit push."* — the agent will tell you day blocks are yours to author; it can only arrange around them (a trust boundary inside the tool surface, not just around it)
 - *"Compare the Ridgeline 45L and the Cairn 65L, place whichever suits a winter trip, and tell me why."* (compare_gear → place_on_board with a note)
 - *"Group everything under the right days and tidy the board."* (get_board_state → move_board_item)
@@ -111,9 +115,9 @@ Then drag things around yourself while the agent works — you're both moving th
 
 ### The board
 
-A bounded 2400×1600 canvas inside a scrolling frame (`src/lib/board-geometry.ts`). Cards are absolutely positioned with CSS transforms — no canvas/SVG engine. Human drags run through dnd-kit's `PointerSensor` with a `DragOverlay`; agent placements and moves go through the same REST API the tools call, and the board store's poll + event nudge makes them animate in with the exact CSS transition a human drag gets. Positions are clamped server-side, and when a tool places a card without coordinates the server scans for the next open slot.
+A bounded 2400×1600 canvas inside a scrolling frame (`src/lib/board-geometry.ts`). Cards are absolutely positioned with CSS transforms — no canvas/SVG engine. Human drags run through dnd-kit's `PointerSensor` with a `DragOverlay`; agent placements and moves go through the same REST API the tools call, and the board store's poll + event nudge makes them animate in with the exact CSS transition a human drag gets. Positions are clamped server-side, and when a tool places a card without coordinates the server scans for the next open slot in the appropriate zone (the top "Already Have" lane `y: 0–380` for owned gear, or the main area `y >= 380` for items to pack).
 
-Day blocks (the itinerary) are human-authored `BoardItem` rows — the agent can move or remove them but a `403` stops it from creating them. Budget is *not* a board row: it lives on the trip brief and renders as a derived roll-up, so there's one source of truth.
+Day blocks (the itinerary) are human-authored `BoardItem` rows — the agent can move or remove them but a `403` stops it from creating them. Budget is *not* a board row: it lives on the trip brief and renders as a derived roll-up strictly summing needed items, so there's one source of truth.
 
 ### API surface (all plain REST — the tools are a thin client of it)
 
@@ -123,16 +127,18 @@ Day blocks (the itinerary) are human-authored `BoardItem` rows — the agent can
 | `POST /api/gear/filter` | `{ category?, minPrice?, maxPrice?, tags? }` in dollars |
 | `GET /api/gear/[id]` | One gear item, or 404 |
 | `POST /api/gear/compare` | `{ gearItemIds }` — 2 to 4 ids |
-| `GET /api/board?sessionId=` | The whole board: items, positions, notes, totals, locked, pending day-order proposal |
+| `POST /api/gear/owned` | `{ sessionId, name, category?, note? }` — fuzzy match catalog or custom personal owned item |
+| `GET /api/board?sessionId=` | The whole board: items, positions, notes, totals, ownership status, locked, pending day-order proposal |
 | `POST /api/board/place` | `{ sessionId, itemType, gearItemId?/label?+text?, x?, y?, quantity?, addedBy, note? }` — day blocks are human-only (`403` for agents) |
-| `POST /api/board/move` | `{ boardItemId, x, y }` — clamped to the board |
-| `POST /api/board/update` | `{ boardItemId, quantity?/label?+text? }` |
+| `POST /api/board/move` | `{ boardItemId, x, y }` — clamped to the board; moving across y=380 boundary syncs ownership |
+| `POST /api/board/update` | `{ boardItemId, quantity?/label?+text?/ownership? }` |
 | `DELETE /api/board/[boardItemId]` | Remove a card |
 | `GET /api/brief?sessionId=` | The trip brief + any pending proposal |
 | `POST /api/brief/update` | **Human-only** (`updatedBy: "agent"` → 403) direct edit — now including the trip's place and dates |
 | `POST /api/board/day-order/propose` | The agent path — stores a pending day-order suggestion (a complete re-ordering of the session's day blocks), applies nothing |
 | `POST /api/board/day-order/resolve` | `{ decision: "accept" \| "dismiss" }` — the human's call; accept reassigns the day blocks' positions so the board reads in the proposed order |
 | `GET /api/weather?sessionId=` | The weather outlook for the brief's place and dates — forecast / historical average / unavailable, always labeled; upstream calls are TTL-cached server-side |
+| `POST /api/weather/compare` | `{ sessionId, dateRanges: [{ startDate, endDate, label? }] }` — concurrent side-by-side weather and readiness comparison across 2–3 date ranges |
 | `POST /api/brief/propose` | The agent path — stores a pending suggestion, applies nothing |
 | `POST /api/brief/resolve` | `{ decision: "accept" \| "dismiss" }` — the human's call |
 | `POST /api/brief/lock` | **Human-only** — sets `lockedAt`; every mutation route then answers 409 |
@@ -145,19 +151,20 @@ No auth: a `sessionId` in `localStorage` scopes the board, the brief, and the ac
 ### Where things live
 
 ```
-prisma/schema.prisma        GearItem · BoardItem (x, y, itemType, addedBy + agent note) · TripBrief (budget, place, dates, lockedAt) · Proposal (pending suggestions, one per kind) · ActivityEvent
+prisma/schema.prisma        GearItem (source: catalog/owned) · BoardItem (ownership: needed/owned, x, y, itemType, addedBy + agent note) · TripBrief (budget, place, dates, lockedAt) · Proposal (pending suggestions, one per kind) · ActivityEvent
 prisma/seed.ts              28 real gear items, 4 categories, availability flavor, verified Unsplash images
-src/lib/mcp-tools.ts        the 14 tool definitions — the heart of the submission
-src/lib/board-geometry.ts   board bounds, clamping, next-open-slot scan
+src/lib/mcp-tools.ts        the 16 tool definitions — the heart of the submission
+src/lib/board-geometry.ts   board bounds, clamping, owned zone boundary (y=380), next-open-slot scan
 src/lib/trip-readiness.ts   trip archetypes → expected gear; shared by the tool and the rail panel
 src/lib/weather.ts          the three-state weather outlook: classifier, builders, summaries, gear-gap fold (pure, fixture-tested)
-src/lib/weather-open-meteo.ts  the Open-Meteo client: geocoding, forecast, 4-year archive average, TTL caches
+src/lib/weather-open-meteo.ts  the Open-Meteo client: geocoding, forecast, 4-year archive average, multi-date comparison core, TTL caches
 src/lib/proposals.ts        the generalized pending-proposal store (brief updates + day orders)
 src/lib/day-order.ts        day order as spatial reading order; slot-reassignment planner
 src/lib/activity.ts         single write path into the shared activity log
 src/components/mcp-provider.tsx        registers/unregisters tools with document.modelContext
 src/components/board/board-workspace.tsx  DndContext (tray + board), toolbar, lock flow
-src/components/board/board-canvas.tsx     the 2400×1600 canvas and its cards
+src/components/board/board-canvas.tsx     the 2400×1600 canvas and its cards (with Already Have vs To Pack visual zones)
+src/components/board/date-comparison-panel.tsx  side-by-side multi-date weather and readiness preview
 src/components/board/gear-tray.tsx        draggable gear library + search/filter
 src/components/board/day-order-banner.tsx  the pending day-order proposal, above the board it would rearrange
 src/components/trip-brief-panel.tsx       the shared brief editor (description, place, dates, budget) + weather chip + proposal banner
@@ -166,7 +173,7 @@ src/components/weather-chip.tsx           the always-labeled outlook chip in the
 src/components/board/export-view.tsx      the locked plan: packing list + itinerary + print
 src/components/activity-strip.tsx         the live toast strip, driven by the activity table
 src/app/api/…               the REST routes above
-scripts/verify-mcp.ts       end-to-end assertions on the whole tool surface (incl. weather fixtures)
+scripts/verify-mcp.ts       end-to-end assertions on the whole tool surface (incl. weather fixtures, owned marking, multi-date comparison)
 scripts/verify-loop.ts      the full human+agent collaboration loop, as one executable script
 scripts/browser-e2e.sh      full browser E2E, driving the real WebMCP context
 ```
@@ -177,10 +184,10 @@ A planning board with a field notebook's warmth, not a dashboard: warm paper bac
 
 ## Verified
 
-- `npm run build` — zero type errors, 20 routes
-- `bun run scripts/verify-mcp.ts` — 135 assertions: every tool happy path *and* error path, agent attribution hardcoded, notes persisted, pending-proposal semantics (nothing applied until accepted, in **both** domains), day-order validation (unknown/gear/duplicate/partial ids all refused; slot reassignment keeps the same layout; dismiss changes nothing), the three weather states (unset, unfindable place, past dates asserted outright; forecast and seasonal-average asserted live-or-honestly-unavailable, with the parsing/averaging/gap logic pinned by Open-Meteo-shaped fixtures), locked-plan refusals for every mutating tool, register/unregister contract, and an explicit check that **no lock/export/reset/checkout tool exists**
-- `bun run scripts/verify-loop.ts` — 43 assertions: the full collaboration loop as a real agent would chain it (brief → proposal → accept → day blocks → place + dates set → weather outlook → weather-folded readiness → day order proposed → accepted → proposed again → dismissed with nothing moving → grounded search → budget filter → compare → place with notes → move → readiness → gap filled → budget proposal declined → lock → agent locked out → export integrity, days in the *accepted* order)
-- `bash scripts/browser-e2e.sh` — 39 checks in a real browser driving the **native** `document.modelContext` (`getTools()` + `executeTool()`): brief saved through the UI and read back through the tool, the weather chip in each of its states (unset → unfindable place → matching whatever the tool's own API returns, with its honest label), agent placements animating onto the board with attribution and notes, agent moves updating the live transform, a human tray-drag onto the board, day blocks, the brief-proposal Accept flow, the **day-order banner appearing live, accepted (the board reorders), and dismissed (nothing moves)**, lock → export view, agent mutations refused while locked, and no horizontal overflow at 390px
+- `npm run build` — zero type errors, 22 routes
+- `bun run scripts/verify-mcp.ts` — 158 assertions: every tool happy path *and* error path, agent attribution hardcoded, notes persisted, pending-proposal semantics (nothing applied until accepted, in **both** domains), owned item marking ($0 budget impact, closes readiness gaps, zone placement), multi-date candidate comparison (concurrent forecast + historical outlooks, graceful partial failure), day-order validation (unknown/gear/duplicate/partial ids all refused; slot reassignment keeps the same layout; dismiss changes nothing), the three weather states (unset, unfindable place, past dates asserted outright; forecast and seasonal-average asserted live-or-honestly-unavailable, with the parsing/averaging/gap logic pinned by Open-Meteo-shaped fixtures), locked-plan refusals for every mutating tool, register/unregister contract, and an explicit check that **no lock/export/reset/checkout tool exists**
+- `bun run scripts/verify-loop.ts` — 50 assertions: the full collaboration loop as a real agent would chain it (brief → proposal → accept → day blocks → place + dates set → weather outlook → weather-folded readiness → owned item marked with $0 budget impact → candidate date comparison → day order proposed → accepted → proposed again → dismissed with nothing moving → grounded search → budget filter → compare → place with notes → move → readiness → gap filled → budget proposal declined → lock → agent locked out → export integrity, days in the *accepted* order)
+- `bash scripts/browser-e2e.sh` — 40 checks in a real browser driving the **native** `document.modelContext` (`getTools()` + `executeTool()`): brief saved through the UI and read back through the tool, the weather chip in each of its states (unset → unfindable place → matching whatever the tool's own API returns, with its honest label), agent placements animating onto the board with attribution and notes, agent moves updating the live transform, a human tray-drag onto the board, day blocks, the brief-proposal Accept flow, the **day-order banner appearing live, accepted (the board reorders), and dismissed (nothing moves)**, lock → export view, agent mutations refused while locked, and no horizontal overflow at 390px
 
 One environmental note, logged in [DECISIONS.md](DECISIONS.md): Open-Meteo's anonymous tier is IP-rate-limited, and the IP this project was built behind sat on an exhausted quota — so the harnesses verify the weather contract deterministically (fixtures + fallback assertions) and the live data paths whenever upstream cooperates. On a normal IP the forecast and seasonal-average states return real data.
 

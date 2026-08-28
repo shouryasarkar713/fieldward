@@ -79,7 +79,8 @@ export const GearItemScalarFieldEnum = {
   category: 'category',
   tags: 'tags',
   imageUrl: 'imageUrl',
-  availability: 'availability'
+  availability: 'availability',
+  source: 'source'
 } as const
 
 export type GearItemScalarFieldEnum = (typeof GearItemScalarFieldEnum)[keyof typeof GearItemScalarFieldEnum]
@@ -94,6 +95,7 @@ export const BoardItemScalarFieldEnum = {
   text: 'text',
   quantity: 'quantity',
   addedBy: 'addedBy',
+  ownership: 'ownership',
   note: 'note',
   x: 'x',
   y: 'y',

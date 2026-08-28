@@ -47,6 +47,7 @@ export type BoardItemMinAggregateOutputType = {
   text: string | null
   quantity: number | null
   addedBy: string | null
+  ownership: string | null
   note: string | null
   x: number | null
   y: number | null
@@ -63,6 +64,7 @@ export type BoardItemMaxAggregateOutputType = {
   text: string | null
   quantity: number | null
   addedBy: string | null
+  ownership: string | null
   note: string | null
   x: number | null
   y: number | null
@@ -79,6 +81,7 @@ export type BoardItemCountAggregateOutputType = {
   text: number
   quantity: number
   addedBy: number
+  ownership: number
   note: number
   x: number
   y: number
@@ -109,6 +112,7 @@ export type BoardItemMinAggregateInputType = {
   text?: true
   quantity?: true
   addedBy?: true
+  ownership?: true
   note?: true
   x?: true
   y?: true
@@ -125,6 +129,7 @@ export type BoardItemMaxAggregateInputType = {
   text?: true
   quantity?: true
   addedBy?: true
+  ownership?: true
   note?: true
   x?: true
   y?: true
@@ -141,6 +146,7 @@ export type BoardItemCountAggregateInputType = {
   text?: true
   quantity?: true
   addedBy?: true
+  ownership?: true
   note?: true
   x?: true
   y?: true
@@ -244,6 +250,7 @@ export type BoardItemGroupByOutputType = {
   text: string | null
   quantity: number
   addedBy: string
+  ownership: string
   note: string | null
   x: number
   y: number
@@ -283,6 +290,7 @@ export type BoardItemWhereInput = {
   text?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   quantity?: Prisma.IntFilter<"BoardItem"> | number
   addedBy?: Prisma.StringFilter<"BoardItem"> | string
+  ownership?: Prisma.StringFilter<"BoardItem"> | string
   note?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   x?: Prisma.FloatFilter<"BoardItem"> | number
   y?: Prisma.FloatFilter<"BoardItem"> | number
@@ -300,6 +308,7 @@ export type BoardItemOrderByWithRelationInput = {
   text?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrder
   addedBy?: Prisma.SortOrder
+  ownership?: Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
   x?: Prisma.SortOrder
   y?: Prisma.SortOrder
@@ -320,6 +329,7 @@ export type BoardItemWhereUniqueInput = Prisma.AtLeast<{
   text?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   quantity?: Prisma.IntFilter<"BoardItem"> | number
   addedBy?: Prisma.StringFilter<"BoardItem"> | string
+  ownership?: Prisma.StringFilter<"BoardItem"> | string
   note?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   x?: Prisma.FloatFilter<"BoardItem"> | number
   y?: Prisma.FloatFilter<"BoardItem"> | number
@@ -337,6 +347,7 @@ export type BoardItemOrderByWithAggregationInput = {
   text?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrder
   addedBy?: Prisma.SortOrder
+  ownership?: Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
   x?: Prisma.SortOrder
   y?: Prisma.SortOrder
@@ -361,6 +372,7 @@ export type BoardItemScalarWhereWithAggregatesInput = {
   text?: Prisma.StringNullableWithAggregatesFilter<"BoardItem"> | string | null
   quantity?: Prisma.IntWithAggregatesFilter<"BoardItem"> | number
   addedBy?: Prisma.StringWithAggregatesFilter<"BoardItem"> | string
+  ownership?: Prisma.StringWithAggregatesFilter<"BoardItem"> | string
   note?: Prisma.StringNullableWithAggregatesFilter<"BoardItem"> | string | null
   x?: Prisma.FloatWithAggregatesFilter<"BoardItem"> | number
   y?: Prisma.FloatWithAggregatesFilter<"BoardItem"> | number
@@ -376,6 +388,7 @@ export type BoardItemCreateInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -393,6 +406,7 @@ export type BoardItemUncheckedCreateInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -408,6 +422,7 @@ export type BoardItemUpdateInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -425,6 +440,7 @@ export type BoardItemUncheckedUpdateInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -441,6 +457,7 @@ export type BoardItemCreateManyInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -456,6 +473,7 @@ export type BoardItemUpdateManyMutationInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -472,6 +490,7 @@ export type BoardItemUncheckedUpdateManyInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -498,6 +517,7 @@ export type BoardItemCountOrderByAggregateInput = {
   text?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   addedBy?: Prisma.SortOrder
+  ownership?: Prisma.SortOrder
   note?: Prisma.SortOrder
   x?: Prisma.SortOrder
   y?: Prisma.SortOrder
@@ -520,6 +540,7 @@ export type BoardItemMaxOrderByAggregateInput = {
   text?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   addedBy?: Prisma.SortOrder
+  ownership?: Prisma.SortOrder
   note?: Prisma.SortOrder
   x?: Prisma.SortOrder
   y?: Prisma.SortOrder
@@ -536,6 +557,7 @@ export type BoardItemMinOrderByAggregateInput = {
   text?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   addedBy?: Prisma.SortOrder
+  ownership?: Prisma.SortOrder
   note?: Prisma.SortOrder
   x?: Prisma.SortOrder
   y?: Prisma.SortOrder
@@ -615,6 +637,7 @@ export type BoardItemCreateWithoutGearItemInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -630,6 +653,7 @@ export type BoardItemUncheckedCreateWithoutGearItemInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -674,6 +698,7 @@ export type BoardItemScalarWhereInput = {
   text?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   quantity?: Prisma.IntFilter<"BoardItem"> | number
   addedBy?: Prisma.StringFilter<"BoardItem"> | string
+  ownership?: Prisma.StringFilter<"BoardItem"> | string
   note?: Prisma.StringNullableFilter<"BoardItem"> | string | null
   x?: Prisma.FloatFilter<"BoardItem"> | number
   y?: Prisma.FloatFilter<"BoardItem"> | number
@@ -689,6 +714,7 @@ export type BoardItemCreateManyGearItemInput = {
   text?: string | null
   quantity?: number
   addedBy: string
+  ownership?: string
   note?: string | null
   x: number
   y: number
@@ -704,6 +730,7 @@ export type BoardItemUpdateWithoutGearItemInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -719,6 +746,7 @@ export type BoardItemUncheckedUpdateWithoutGearItemInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -734,6 +762,7 @@ export type BoardItemUncheckedUpdateManyWithoutGearItemInput = {
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   addedBy?: Prisma.StringFieldUpdateOperationsInput | string
+  ownership?: Prisma.StringFieldUpdateOperationsInput | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   x?: Prisma.FloatFieldUpdateOperationsInput | number
   y?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -752,6 +781,7 @@ export type BoardItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   text?: boolean
   quantity?: boolean
   addedBy?: boolean
+  ownership?: boolean
   note?: boolean
   x?: boolean
   y?: boolean
@@ -769,6 +799,7 @@ export type BoardItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   text?: boolean
   quantity?: boolean
   addedBy?: boolean
+  ownership?: boolean
   note?: boolean
   x?: boolean
   y?: boolean
@@ -786,6 +817,7 @@ export type BoardItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   text?: boolean
   quantity?: boolean
   addedBy?: boolean
+  ownership?: boolean
   note?: boolean
   x?: boolean
   y?: boolean
@@ -803,6 +835,7 @@ export type BoardItemSelectScalar = {
   text?: boolean
   quantity?: boolean
   addedBy?: boolean
+  ownership?: boolean
   note?: boolean
   x?: boolean
   y?: boolean
@@ -810,7 +843,7 @@ export type BoardItemSelectScalar = {
   updatedAt?: boolean
 }
 
-export type BoardItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "itemType" | "gearItemId" | "label" | "text" | "quantity" | "addedBy" | "note" | "x" | "y" | "createdAt" | "updatedAt", ExtArgs["result"]["boardItem"]>
+export type BoardItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "itemType" | "gearItemId" | "label" | "text" | "quantity" | "addedBy" | "ownership" | "note" | "x" | "y" | "createdAt" | "updatedAt", ExtArgs["result"]["boardItem"]>
 export type BoardItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   gearItem?: boolean | Prisma.BoardItem$gearItemArgs<ExtArgs>
 }
@@ -835,6 +868,7 @@ export type $BoardItemPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     text: string | null
     quantity: number
     addedBy: string
+    ownership: string
     note: string | null
     x: number
     y: number
@@ -1272,6 +1306,7 @@ export interface BoardItemFieldRefs {
   readonly text: Prisma.FieldRef<"BoardItem", 'String'>
   readonly quantity: Prisma.FieldRef<"BoardItem", 'Int'>
   readonly addedBy: Prisma.FieldRef<"BoardItem", 'String'>
+  readonly ownership: Prisma.FieldRef<"BoardItem", 'String'>
   readonly note: Prisma.FieldRef<"BoardItem", 'String'>
   readonly x: Prisma.FieldRef<"BoardItem", 'Float'>
   readonly y: Prisma.FieldRef<"BoardItem", 'Float'>

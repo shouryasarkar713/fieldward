@@ -27,10 +27,13 @@ export const CARD_HEIGHT = 168;
 /** Gutter between cards in the default-placement grid (px). */
 export const CARD_GUTTER = 24;
 
-/** The default-placement scan starts here and stays in this region (px). */
-const SCAN_ORIGIN = { x: 48, y: 48 };
-const SCAN_WIDTH = 1440;
-const SCAN_HEIGHT = 960;
+/** Y coordinate boundary dividing the "Already have" (top) and "Need to get" (bottom) zones. */
+export const OWNED_ZONE_BOUNDARY_Y = 380;
+
+/** Scan origins for the two zones */
+export const OWNED_SCAN_ORIGIN = { x: 48, y: 72 };
+export const NEEDED_SCAN_ORIGIN = { x: 48, y: 440 };
+export const SCAN_WIDTH = 1800;
 
 export type Point = { x: number; y: number };
 
@@ -40,6 +43,11 @@ export function clampPosition(point: Point): Point {
     x: Math.min(Math.max(point.x, 0), BOARD_WIDTH - CARD_WIDTH),
     y: Math.min(Math.max(point.y, 0), BOARD_HEIGHT - CARD_HEIGHT),
   };
+}
+
+/** Determine ownership based on board Y coordinate */
+export function getOwnershipFromY(y: number): "owned" | "needed" {
+  return y < OWNED_ZONE_BOUNDARY_Y ? "owned" : "needed";
 }
 
 /** True when two card rects (top-left + approx size) overlap. */
@@ -53,18 +61,14 @@ function rectsOverlap(a: Point, b: Point): boolean {
 }
 
 /**
- * First free slot in the working region, scanning columns left-to-right,
- * rows top-to-bottom. Deterministic — the same board state always yields the
- * same next slot, so repeated placements cascade down the board instead of
- * stacking. If the working region fills up, fall back to a staggered
- * position past the scan area (still clamped).
+ * Scan for an open slot within the "Already have" (top) zone.
  */
-export function nextOpenPosition(occupied: Point[]): Point {
+export function nextOpenOwnedPosition(occupied: Point[]): Point {
   const stepX = CARD_WIDTH + CARD_GUTTER;
   const stepY = CARD_HEIGHT + CARD_GUTTER;
 
-  for (let y = SCAN_ORIGIN.y; y <= SCAN_ORIGIN.y + SCAN_HEIGHT - CARD_HEIGHT; y += stepY) {
-    for (let x = SCAN_ORIGIN.x; x <= SCAN_ORIGIN.x + SCAN_WIDTH - CARD_WIDTH; x += stepX) {
+  for (let y = OWNED_SCAN_ORIGIN.y; y <= OWNED_ZONE_BOUNDARY_Y - CARD_HEIGHT; y += stepY) {
+    for (let x = OWNED_SCAN_ORIGIN.x; x <= OWNED_SCAN_ORIGIN.x + SCAN_WIDTH - CARD_WIDTH; x += stepX) {
       const candidate = { x, y };
       if (!occupied.some((p) => rectsOverlap(candidate, p))) {
         return candidate;
@@ -72,11 +76,33 @@ export function nextOpenPosition(occupied: Point[]): Point {
     }
   }
 
-  // Working region full — cascade down the right edge, staggered so cards
-  // remain visible rather than perfectly stacked.
+  // Fallback if top lane is crowded: overflow to right of top lane
+  return clampPosition({
+    x: OWNED_SCAN_ORIGIN.x + (occupied.length % 6) * stepX,
+    y: OWNED_SCAN_ORIGIN.y,
+  });
+}
+
+/**
+ * First free slot in the needed/working region (bottom zone).
+ */
+export function nextOpenPosition(occupied: Point[]): Point {
+  const stepX = CARD_WIDTH + CARD_GUTTER;
+  const stepY = CARD_HEIGHT + CARD_GUTTER;
+
+  for (let y = NEEDED_SCAN_ORIGIN.y; y <= BOARD_HEIGHT - CARD_HEIGHT - 48; y += stepY) {
+    for (let x = NEEDED_SCAN_ORIGIN.x; x <= NEEDED_SCAN_ORIGIN.x + SCAN_WIDTH - CARD_WIDTH; x += stepX) {
+      const candidate = { x, y };
+      if (!occupied.some((p) => rectsOverlap(candidate, p))) {
+        return candidate;
+      }
+    }
+  }
+
+  // Working region full — cascade down
   const overflowIndex = Math.max(0, occupied.length);
   return clampPosition({
-    x: SCAN_ORIGIN.x + SCAN_WIDTH + (overflowIndex % 3) * stepX,
-    y: SCAN_ORIGIN.y + Math.floor(overflowIndex / 3) * stepY,
+    x: NEEDED_SCAN_ORIGIN.x + (overflowIndex % 4) * stepX,
+    y: NEEDED_SCAN_ORIGIN.y + Math.floor(overflowIndex / 4) * stepY,
   });
 }

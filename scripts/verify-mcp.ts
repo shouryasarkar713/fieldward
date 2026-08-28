@@ -76,7 +76,7 @@ async function main() {
 
   // ── Tool surface ────────────────────────────────────────────────────────
   const tools = buildToolDefinitions();
-  check("buildToolDefinitions returns 14 tools", tools.length === 14, `got ${tools.length}`);
+  check("buildToolDefinitions returns 16 tools", tools.length === 16, `got ${tools.length}`);
   check(
     "tool names match the spec",
     JSON.stringify(tools.map((t) => t.name)) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
@@ -293,6 +293,51 @@ async function main() {
     ((await exec("get_board_state", {})).itemCount as number) === beforeCount + 1,
   );
 
+  // ── mark_item_owned (matched catalog + custom personal gear) ────────────
+  const boardBeforeOwned = await exec("get_board_state", {});
+  const budgetBeforeOwned = boardBeforeOwned.gearTotalCents as number;
+
+  // 1. Matched catalog item
+  const markCatalog = await exec("mark_item_owned", { name: "Nightfall 20° Sleeping Bag", note: "I already have this sleeping bag" });
+  check("mark_item_owned (catalog match) succeeds", markCatalog.success === true);
+  check("matchedExisting is true for catalog item", markCatalog.matchedExisting === true);
+  const catalogItem = markCatalog.item as Record<string, unknown>;
+  check("item ownership is 'owned'", catalogItem?.ownership === "owned");
+  check("item placed by agent", catalogItem?.addedBy === "agent");
+  check("item placed in top 'Already have' zone", (catalogItem?.y as number) < 380, `y=${catalogItem?.y}`);
+
+  // Budget impact test: owned item must NOT increase gearTotalCents
+  const boardAfterCatalog = await exec("get_board_state", {});
+  check(
+    "owned gear does NOT consume trip acquisition budget ($0 impact)",
+    boardAfterCatalog.gearTotalCents === budgetBeforeOwned,
+    `before=${budgetBeforeOwned} after=${boardAfterCatalog.gearTotalCents}`,
+  );
+  check(
+    "board item count grew by 1",
+    (boardAfterCatalog.itemCount as number) === (boardBeforeOwned.itemCount as number) + 1,
+  );
+
+  // Readiness test: owned item satisfies requirements
+  const readinessAfterOwned = await exec("check_trip_readiness", {});
+  check(
+    "owned tent satisfies the winter-rated sleep system requirement",
+    ((readinessAfterOwned.covered as string[]) ?? []).some((c) => c.includes("sleep system")),
+    JSON.stringify(readinessAfterOwned.covered),
+  );
+
+  // 2. Custom non-catalog item
+  const markCustom = await exec("mark_item_owned", {
+    name: "Grandpa's Vintage Compass",
+    category: "Navigation",
+    note: "Inherited heirloom",
+  });
+  check("mark_item_owned (custom gear) succeeds", markCustom.success === true);
+  check("matchedExisting is false for non-catalog item", markCustom.matchedExisting === false);
+  const customItem = markCustom.item as Record<string, unknown>;
+  check("custom item ownership is 'owned'", customItem?.ownership === "owned");
+  check("custom item placed in top zone", (customItem?.y as number) < 380);
+
 
   // ── weather grounding: the three honest states ──────────────────────────
   // The brief at this point has a trip description and budget but NO place
@@ -438,6 +483,57 @@ async function main() {
       console.log("     (live forecast carried no rain/freeze signal — fold verified by fixtures instead)");
     }
   }
+
+  // ── compare_trip_dates: multi-date hypothetical preview ─────────────────
+  const dateCompare = await exec("compare_trip_dates", {
+    dateRanges: [
+      { startDate: "2026-09-05", endDate: "2026-09-07", label: "Option 1: Early Sept" },
+      { startDate: "2026-11-15", endDate: "2026-11-18", label: "Option 2: Mid Nov" },
+    ],
+  });
+  check("compare_trip_dates succeeds", dateCompare.success === true);
+  check("returns comparisonCount of 2", dateCompare.comparisonCount === 2);
+  const comparisons = (dateCompare.comparisons ?? []) as Array<{
+    startDate: string;
+    endDate: string;
+    weather: { dataSource: string };
+    readiness: { totalRequirements: number };
+  }>;
+  check("comparisons array has 2 elements", comparisons.length === 2);
+  check(
+    "each range has its own independent weather outlook and readiness",
+    comparisons[0] !== undefined &&
+      typeof comparisons[0].weather.dataSource === "string" &&
+      typeof comparisons[1]?.weather.dataSource === "string",
+    JSON.stringify(comparisons),
+  );
+
+  // Partial failure test: one valid range, one past range
+  const partialCompare = await exec("compare_trip_dates", {
+    dateRanges: [
+      { startDate: "2026-09-05", endDate: "2026-09-07" },
+      { startDate: "2020-01-01", endDate: "2020-01-03" }, // past
+    ],
+  });
+  check("compare_trip_dates handles partial range issues without crashing", partialCompare.success === true);
+  const partialList = (partialCompare.comparisons ?? []) as Array<{ weather: { dataSource: string } }>;
+  check(
+    "past date range returns honest unavailable without breaking the batch",
+    partialList[1]?.weather.dataSource === "unavailable",
+  );
+
+  // Validation errors
+  const badCompare1 = await exec("compare_trip_dates", { dateRanges: [{ startDate: "2026-09-01", endDate: "2026-09-02" }] });
+  check("compare_trip_dates rejects single range (<2)", badCompare1.success === false);
+  const badCompare4 = await exec("compare_trip_dates", {
+    dateRanges: [
+      { startDate: "2026-09-01", endDate: "2026-09-02" },
+      { startDate: "2026-09-03", endDate: "2026-09-04" },
+      { startDate: "2026-09-05", endDate: "2026-09-06" },
+      { startDate: "2026-09-07", endDate: "2026-09-08" },
+    ],
+  });
+  check("compare_trip_dates rejects >3 ranges", badCompare4.success === false);
 
   // ── weather: pure-function fixtures (deterministic, no upstream) ─────────
   // Real Open-Meteo response shapes, run through the same builders the
@@ -726,6 +822,8 @@ async function main() {
 
   const placeLocked = await exec("place_on_board", { gearItemId: talusId! });
   check("place_on_board refused while locked", placeLocked.success === false, JSON.stringify(placeLocked));
+  const markOwnedLocked = await exec("mark_item_owned", { name: "Hollowpine 2P Tent" });
+  check("mark_item_owned refused while locked", markOwnedLocked.success === false);
   const moveLocked = await exec("move_board_item", {
     boardItemId: agentCard!.id as string,
     x: 10,
@@ -738,6 +836,15 @@ async function main() {
   check("propose_trip_brief_update refused while locked", proposeLocked.success === false);
   const suggestLocked = await exec("suggest_day_order", { orderedBoardItemIds: [dayA, dayB, dayC] });
   check("suggest_day_order refused while locked", suggestLocked.success === false);
+
+  // Read-only tools still succeed while locked
+  const compareDatesLocked = await exec("compare_trip_dates", {
+    dateRanges: [
+      { startDate: "2026-09-01", endDate: "2026-09-02" },
+      { startDate: "2026-09-03", endDate: "2026-09-04" },
+    ],
+  });
+  check("compare_trip_dates succeeds while locked (read-only preview)", compareDatesLocked.success === true);
 
   // Human starts a new plan (the only way out of a lock — human-only too).
   const resetResponse = await originalFetch(`${BASE}/api/brief/reset`, {
@@ -769,13 +876,13 @@ async function main() {
   };
   await registerFieldwardTools(mockContext);
   check(
-    "registerFieldwardTools registers all 14 tools individually",
-    registered.length === 14 && JSON.stringify(registered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
+    "registerFieldwardTools registers all 16 tools individually",
+    registered.length === 16 && JSON.stringify(registered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
   );
   await unregisterFieldwardTools(mockContext);
   check(
     "unregisterFieldwardTools calls unregisterTool once per tool",
-    unregistered.length === 14 && JSON.stringify(unregistered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
+    unregistered.length === 16 && JSON.stringify(unregistered) === JSON.stringify([...FIELDWARD_TOOL_NAMES]),
   );
 
   console.log(`\nRESULT: ${passed} passed, ${failed} failed`);

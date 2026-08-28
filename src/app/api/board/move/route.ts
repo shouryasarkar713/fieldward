@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { toBoardItemDTO } from "@/lib/gear";
-import { clampPosition } from "@/lib/board-geometry";
+import { clampPosition, getOwnershipFromY } from "@/lib/board-geometry";
 import { errorResponse, optionalNumber, readJsonBody, requireString } from "@/lib/validate";
 
 /**
@@ -41,10 +41,15 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const position = clampPosition({ x: x.value, y: y.value });
+    const ownership = getOwnershipFromY(position.y);
 
     const updated = await db.boardItem.update({
       where: { id: boardItemId.value },
-      data: { x: position.x, y: position.y },
+      data: {
+        x: position.x,
+        y: position.y,
+        ...(existing.itemType === "gear" ? { ownership } : {}),
+      },
       include: { gearItem: true },
     });
 

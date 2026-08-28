@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { toBoardItemDTO, toBoardSummary } from "@/lib/gear";
-import { clampPosition, nextOpenPosition } from "@/lib/board-geometry";
+import { clampPosition, nextOpenOwnedPosition, nextOpenPosition } from "@/lib/board-geometry";
 import type { BoardItemDTO } from "@/lib/types";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -33,17 +33,18 @@ export async function loadBoardSummary(sessionId: string): Promise<BoardItemDTO[
 
 /**
  * Resolve a position for a new card: use the caller's x/y (clamped) or scan
- * for the next open slot server-side, so agents never do layout math.
+ * for the next open slot in the appropriate zone server-side.
  */
 export function resolveNewPosition(
   x: number | undefined,
   y: number | undefined,
   occupied: { x: number; y: number }[],
+  ownership: "owned" | "needed" = "needed",
 ): { x: number; y: number } {
   if (x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y)) {
     return clampPosition({ x, y });
   }
-  return nextOpenPosition(occupied);
+  return ownership === "owned" ? nextOpenOwnedPosition(occupied) : nextOpenPosition(occupied);
 }
 
 export function boardItemInclude(): Prisma.BoardItemInclude {

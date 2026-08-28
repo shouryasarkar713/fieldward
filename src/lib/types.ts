@@ -15,6 +15,9 @@ export type AddedBy = (typeof ADDED_BY)[number];
 export const ITEM_TYPES = ["gear", "day"] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
+export const OWNERSHIP = ["needed", "owned"] as const;
+export type Ownership = (typeof OWNERSHIP)[number];
+
 export type GearItemDTO = {
   id: string;
   name: string;
@@ -29,6 +32,7 @@ export type GearItemDTO = {
   availability: string;
   /** True when the item can realistically be had before a near-term trip. */
   available: boolean;
+  source: "catalog" | "owned";
 };
 
 export type BoardItemDTO = {
@@ -48,6 +52,7 @@ export type BoardItemDTO = {
   priceDisplay: string | null;
   quantity: number;
   addedBy: AddedBy;
+  ownership: Ownership;
   /** Optional first-person reasoning left by the agent when it placed this. */
   note: string | null;
   x: number;
@@ -63,7 +68,7 @@ export type BoardSummary = {
   items: BoardItemDTO[];
   /** Total number of gear cards (day blocks don't count). */
   itemCount: number;
-  /** Sum of unitPrice × quantity across gear cards, in cents. */
+  /** Sum of unitPrice × quantity across needed gear cards, in cents. */
   gearTotalCents: number;
   gearTotalDisplay: string;
   /** True while the human has locked this plan — the board is read-only. */
@@ -164,6 +169,26 @@ export type WeatherOutlook =
       reason: string;
     };
 
+export type DateRangeComparison = {
+  label?: string;
+  startDate: string;
+  endDate: string;
+  weather: WeatherOutlook;
+  readiness: {
+    matched: boolean;
+    trip: string | null;
+    gaps: string[];
+    covered: string[];
+    totalRequirements: number;
+    gearCards: number;
+  };
+};
+
+export type DateComparisonResult = {
+  location: string | null;
+  comparisons: DateRangeComparison[];
+};
+
 export function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as readonly string[]).includes(value);
 }
@@ -174,4 +199,8 @@ export function isAddedBy(value: unknown): value is AddedBy {
 
 export function isItemType(value: unknown): value is ItemType {
   return typeof value === "string" && (ITEM_TYPES as readonly string[]).includes(value);
+}
+
+export function isOwnership(value: unknown): value is Ownership {
+  return typeof value === "string" && (OWNERSHIP as readonly string[]).includes(value);
 }

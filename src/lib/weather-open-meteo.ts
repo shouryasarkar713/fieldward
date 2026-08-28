@@ -289,20 +289,19 @@ async function fetchHistoricalAverage(place: GeoPlace, tripStart: string, tripEn
   return outlook;
 }
 
-/* ── The one entry point ─────────────────────────────────────────────────── */
+/* ── The parameterized weather engine (Single Core, Multi-Caller) ──────── */
 
 /**
- * Build the outlook for a session's trip brief. Reads location and dates off
- * the brief, decides which of the three states applies, and returns a
- * WeatherOutlook — never throws.
+ * Pure parameterized lookup for a location + explicit date window.
+ * Used by single-date lookups (via brief), readiness checks, and multi-date comparison.
+ * Never throws — downstream errors become honest { dataSource: "unavailable" } outlooks.
  */
-export async function buildWeatherOutlook(sessionId: string): Promise<WeatherOutlook> {
+export async function getWeatherOutlookForParams(
+  location: string | null,
+  startDate: string | null,
+  endDate: string | null,
+): Promise<WeatherOutlook> {
   try {
-    const brief = await db.tripBrief.findUnique({ where: { sessionId } });
-    const location = brief?.location ?? null;
-    const startDate = brief?.startDate != null ? toDateOnly(brief.startDate) : null;
-    const endDate = brief?.endDate != null ? toDateOnly(brief.endDate) : null;
-
     const incompleteReason = incompleteOutlookReason(location, startDate, endDate);
     if (incompleteReason !== null) {
       return { dataSource: "unavailable", reason: incompleteReason };
@@ -330,10 +329,10 @@ export async function buildWeatherOutlook(sessionId: string): Promise<WeatherOut
       // A trip already underway still has a real forecast ahead of it — clamp
       // the window's start to today and let the copy say what it covers.
       const start = tripStart < today ? today : tripStart;
-      return fetchForecast(place, start, tripEnd);
+      return await fetchForecast(place, start, tripEnd);
     }
 
-    return fetchHistoricalAverage(place, tripStart, tripEnd);
+    return await fetchHistoricalAverage(place, tripStart, tripEnd);
   } catch (error) {
     console.error("[weather] outlook build failed", error);
     return {
@@ -341,4 +340,54 @@ export async function buildWeatherOutlook(sessionId: string): Promise<WeatherOut
       reason: "The weather service is unreachable right now — try again in a moment.",
     };
   }
+}
+
+/**
+ * Build the outlook for a session's trip brief. Reads location and dates off
+ * the brief and delegates directly to the parameterized core.
+ */
+export async function buildWeatherOutlook(sessionId: string): Promise<WeatherOutlook> {
+  try {
+    const brief = await db.tripBrief.findUnique({ where: { sessionId } });
+    const location = brief?.location ?? null;
+    const startDate = brief?.startDate != null ? toDateOnly(brief.startDate) : null;
+    const endDate = brief?.endDate != null ? toDateOnly(brief.endDate) : null;
+
+    return await getWeatherOutlookForParams(location, startDate, endDate);
+  } catch (error) {
+    console.error("[weather] brief outlook build failed", error);
+    return {
+      dataSource: "unavailable",
+      reason: "The weather service is unreachable right now — try again in a moment.",
+    };
+  }
+}
+
+/**
+ * Run concurrent weather lookups across 2–3 date ranges for multi-date comparison.
+ * Never fails the whole batch if one range has an issue.
+ */
+export async function compareWeatherOutlooks(
+  location: string | null,
+  ranges: Array<{ startDate: string; endDate: string; label?: string }>,
+): Promise<Array<{ range: { startDate: string; endDate: string; label?: string }; outlook: WeatherOutlook }>> {
+  const settled = await Promise.allSettled(
+    ranges.map(async (range) => {
+      const outlook = await getWeatherOutlookForParams(location, range.startDate, range.endDate);
+      return { range, outlook };
+    }),
+  );
+
+  return settled.map((result, index) => {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
+    return {
+      range: ranges[index],
+      outlook: {
+        dataSource: "unavailable",
+        reason: "Weather lookup for this date range failed.",
+      },
+    };
+  });
 }

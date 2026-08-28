@@ -26,8 +26,10 @@ export async function POST(request: Request): Promise<Response> {
     const text = await optionalString(body, "text", { max: 280 });
     if (!text.ok) return errorResponse(400, text.error);
 
-    if (quantity.value === undefined && label.value === undefined && text.value === undefined) {
-      return errorResponse(400, 'Provide at least one of "quantity", "label", or "text".');
+    const ownership = typeof body.ownership === "string" && (body.ownership === "owned" || body.ownership === "needed") ? body.ownership : undefined;
+
+    if (quantity.value === undefined && label.value === undefined && text.value === undefined && ownership === undefined) {
+      return errorResponse(400, 'Provide at least one of "quantity", "label", "text", or "ownership".');
     }
 
     const existing = await db.boardItem.findUnique({ where: { id: boardItemId.value }, include: { gearItem: true } });
@@ -40,9 +42,9 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse(409, "This plan is locked — the board is read-only.");
     }
 
-    // Field-level sanity: quantity belongs to gear cards, label/text to days.
-    if (quantity.value !== undefined && existing.itemType !== "gear") {
-      return errorResponse(400, "Only gear cards have a quantity.");
+    // Field-level sanity: quantity and ownership belong to gear cards, label/text to days.
+    if ((quantity.value !== undefined || ownership !== undefined) && existing.itemType !== "gear") {
+      return errorResponse(400, "Only gear cards have quantity and ownership.");
     }
     if ((label.value !== undefined || text.value !== undefined) && existing.itemType !== "day") {
       return errorResponse(400, "Only day blocks have a label and text.");
@@ -52,6 +54,7 @@ export async function POST(request: Request): Promise<Response> {
       where: { id: boardItemId.value },
       data: {
         ...(quantity.value !== undefined ? { quantity: quantity.value } : {}),
+        ...(ownership !== undefined ? { ownership } : {}),
         ...(label.value !== undefined ? { label: label.value } : {}),
         ...(text.value !== undefined ? { text: text.value } : {}),
       },

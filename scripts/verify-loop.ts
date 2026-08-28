@@ -192,6 +192,39 @@ async function main() {
     );
   }
 
+  // ── 6d. Human mentions gear they already own → Agent marks it owned ─────
+  console.log("── Agent: mark_item_owned (Nightfall 20° Sleeping Bag) + check_trip_readiness");
+  const budgetBeforeOwned = ((await exec("get_board_state", {})).gearTotalCents as number);
+  const markOwned = await exec("mark_item_owned", {
+    name: "Nightfall 20° Sleeping Bag",
+    note: "Human already owns this sleeping bag in their closet.",
+  });
+  check("6d. agent marks the sleeping bag as already owned", markOwned.success === true && markOwned.matchedExisting === true);
+  const boardAfterOwned = await exec("get_board_state", {});
+  check("6e. owned item did not increase acquisition budget spend", boardAfterOwned.gearTotalCents === budgetBeforeOwned);
+
+  const readinessAfterOwned = await exec("check_trip_readiness", {});
+  check(
+    "6f. readiness reflects owned item satisfying the winter shelter requirement",
+    ((readinessAfterOwned.covered as string[]) ?? []).some((c) => c.includes("sleep system") || c.includes("shelter")),
+    JSON.stringify(readinessAfterOwned.covered),
+  );
+
+  // ── 6g. Agent compares two candidate date windows side-by-side ───────────
+  console.log("── Agent: compare_trip_dates (Sept vs Nov candidate windows)");
+  const compareDates = await exec("compare_trip_dates", {
+    dateRanges: [
+      { startDate: "2026-09-05", endDate: "2026-09-08", label: "Option A: Late Summer" },
+      { startDate: "2026-11-15", endDate: "2026-11-18", label: "Option B: Early Winter" },
+    ],
+  });
+  check("6g. agent compares candidate date ranges side-by-side", compareDates.success === true && compareDates.comparisonCount === 2);
+  const compList = (compareDates.comparisons as Array<{ weather: { dataSource: string }; readiness: { matched: boolean } }>);
+  check(
+    "6h. candidate date ranges carry independent weather and readiness evaluations",
+    compList.length === 2 && typeof compList[0]?.weather.dataSource === "string" && typeof compList[1]?.weather.dataSource === "string",
+  );
+
   // ── 7. Agent suggests a day order; the human decides ────────────────────
   console.log("── Agent: suggest_day_order (lake camp first) → Human: accepts");
   const boardForOrder = await exec("get_board_state", {});
@@ -359,7 +392,7 @@ async function main() {
   const exportItems = (exportBoard.body.items ?? []) as Array<Record<string, unknown>>;
   const gearCards = exportItems.filter((i) => i.itemType === "gear");
   const dayBlocks = exportItems.filter((i) => i.itemType === "day").sort((a, b) => (a.y as number) - (b.y as number));
-  check("16. export sees all cards", gearCards.length === 4);
+  check("16. export sees all cards", gearCards.length === 5);
   check("16b. export sees both days in the ACCEPTED board order (Day 2 first)", (dayBlocks[0]?.label as string)?.startsWith("Day 2"));
   check(
     "16c. every agent card carries its reasoning",

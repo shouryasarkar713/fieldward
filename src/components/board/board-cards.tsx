@@ -85,7 +85,14 @@ export function GearCardBody({ item, locked }: CardBodyProps) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow text-ink-faint">{item.category}</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="eyebrow text-ink-faint">{item.category}</p>
+            {item.ownership === "owned" && (
+              <span className="inline-flex items-center rounded-sm bg-pine/15 px-1.5 py-0.2 text-[10px] font-medium text-pine">
+                Already own
+              </span>
+            )}
+          </div>
           <h4 className="mt-0.5 font-serif text-sm leading-snug tracking-tight text-ink">
             {/* No pointer opt-out on the link: a clean click navigates, a
                 press-and-move drags the card (dnd-kit's 6px activation). */}
@@ -95,8 +102,19 @@ export function GearCardBody({ item, locked }: CardBodyProps) {
           </h4>
           {constrained && (
             <p className="mt-0.5 text-xs tabular-nums text-ink-soft">
-              {item.priceDisplay}
-              {item.quantity > 1 && <span className="text-ink-faint"> × {item.quantity}</span>}
+              {item.ownership === "owned" ? (
+                <span>
+                  <span className="font-medium text-pine">Owned</span>
+                  {item.unitPrice && item.unitPrice > 0 ? (
+                    <span className="ml-1 text-[11px] text-ink-faint">({item.priceDisplay} value)</span>
+                  ) : null}
+                </span>
+              ) : (
+                <>
+                  {item.priceDisplay}
+                  {item.quantity > 1 && <span className="text-ink-faint"> × {item.quantity}</span>}
+                </>
+              )}
             </p>
           )}
         </div>

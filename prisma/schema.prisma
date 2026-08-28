@@ -31,7 +31,8 @@ model GearItem {
   category     String
   tags         String // JSON string array, parsed in app layer
   imageUrl     String
-  availability String @default("In stock")
+  availability String      @default("In stock")
+  source       String      @default("catalog") // "catalog" | "owned"
   boardItems   BoardItem[]
 }
 
@@ -46,22 +47,23 @@ model GearItem {
 // framing object) and the board renders it as a derived roll-up, so there is
 // exactly one source of truth for the budget.
 model BoardItem {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   sessionId  String
   itemType   String // "gear" | "day"
   gearItemId String?
   label      String? // day blocks: "Day 1 — Cairn Lake"
   text       String? // day blocks: segment notes ("6 mi, 1,900 ft gain")
-  quantity   Int @default(1) // gear only
+  quantity   Int       @default(1) // gear only
   addedBy    String // "human" | "agent"
+  ownership  String    @default("needed") // "needed" | "owned"
   // Optional first-person reasoning left by the agent tool call — rendered
   // beside the card as the agent's "voice". Nullable: most cards (and every
   // human-placed card) carry none.
   note       String?
   x          Float
   y          Float
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   gearItem   GearItem? @relation(fields: [gearItemId], references: [id])
 
   @@index([sessionId])

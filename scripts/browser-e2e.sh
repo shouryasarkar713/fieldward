@@ -53,7 +53,8 @@ echo "$BODY" | rg -qi "the gear tray" && ok "home shows the gear tray" || bad "h
 echo "$BODY" | rg -q "The board" && ok "home shows the board" || bad "home shows the board"
 echo "$BODY" | rg -q "Lock this plan" && ok "Lock this plan button present" || bad "Lock this plan button present"
 echo "$BODY" | rg -qi "cart|checkout|place an order|add to cart" && bad "no commerce language on home" || ok "no commerce language on home"
-echo "$BODY" | rg -q "Agent tools · 14" && ok "native WebMCP context registered 14 tools (status pill)" || bad "status pill shows 14 tools"
+echo "$BODY" | rg -q "Agent tools · 16" && ok "native WebMCP context registered 16 tools (status pill)" || bad "status pill shows 16 tools"
+echo "$BODY" | rg -qi "Already Have" && ok "board displays Already Have (Owned) top lane" || bad "Already Have lane missing"
 
 # Helper: call a registered WebMCP tool through the native context.
 # $1 = tool name, $2 = input as a single-quoted JSON string (shell single

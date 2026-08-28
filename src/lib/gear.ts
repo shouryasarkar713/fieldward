@@ -44,6 +44,7 @@ export function toGearDTO(item: GearItemRecord): GearItemDTO {
     availability: item.availability,
     // Flavor strings that mean "you can't have this in time" — see the seed.
     available: !/^waitlist|out of stock|gone/i.test(item.availability),
+    source: item.source === "owned" ? "owned" : "catalog",
   };
 }
 
@@ -60,6 +61,7 @@ export function toBoardItemDTO(item: BoardItemRecord): BoardItemDTO {
     priceDisplay: item.gearItem ? formatCents(item.gearItem.price) : null,
     quantity: item.quantity,
     addedBy: (item.addedBy === "agent" ? "agent" : "human") as BoardItemDTO["addedBy"],
+    ownership: item.ownership === "owned" ? "owned" : "needed",
     note: item.note ?? null,
     x: item.x,
     y: item.y,
@@ -76,7 +78,9 @@ export function toBoardSummary(
 ): BoardSummary {
   const dtos = items.map(toBoardItemDTO);
   const gear = dtos.filter((item) => item.itemType === "gear");
-  const gearTotalCents = gear.reduce(
+  // Owned gear does not count toward needed acquisition cost
+  const neededGear = gear.filter((item) => item.ownership !== "owned");
+  const gearTotalCents = neededGear.reduce(
     (sum, item) => sum + (item.unitPrice ?? 0) * item.quantity,
     0,
   );
