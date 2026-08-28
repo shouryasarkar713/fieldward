@@ -112,15 +112,14 @@ export function BoardWorkspace({ gear }: { gear: GearItemDTO[] }) {
     if (drag === null) return;
     if (event.over === null || String(event.over.id) !== "board-surface") return;
 
-    const activator = event.activatorEvent as { clientX?: number; clientY?: number };
-    if (activator.clientX === undefined || activator.clientY === undefined) return;
-    const drop = boardPoint(activator.clientX + event.delta.x, activator.clientY + event.delta.y);
-
     if (drag.kind === "tray") {
+      const activator = event.activatorEvent as { clientX?: number; clientY?: number };
+      if (activator.clientX === undefined || activator.clientY === undefined) return;
+      const drop = boardPoint(activator.clientX + event.delta.x, activator.clientY + event.delta.y);
       // Center the new card under the cursor, biased to its top third.
       const target = clampPosition({
-        x: drop.x - CARD_WIDTH / 2,
-        y: drop.y - 48,
+        x: Math.round(drop.x - CARD_WIDTH / 2),
+        y: Math.round(drop.y - 48),
       });
       void placeGear({
         gearItemId: drag.gear.id,
@@ -131,15 +130,18 @@ export function BoardWorkspace({ gear }: { gear: GearItemDTO[] }) {
       return;
     }
 
-    const target = clampPosition({
-      x: drop.x - drag.grabOffset.x,
-      y: drop.y - drag.grabOffset.y,
-    });
-    const label =
-      drag.item.itemType === "day"
-        ? `the ${drag.item.label ?? "day"} block`
-        : drag.item.name;
-    void moveItem(drag.item.id, target.x, target.y, label);
+    if (drag.kind === "board") {
+      // Exactly where the human dragged the card: starting (x, y) + delta
+      const target = clampPosition({
+        x: Math.round(drag.item.x + event.delta.x),
+        y: Math.round(drag.item.y + event.delta.y),
+      });
+      const label =
+        drag.item.itemType === "day"
+          ? `the ${drag.item.label ?? "day"} block`
+          : drag.item.name;
+      void moveItem(drag.item.id, target.x, target.y, label);
+    }
   };
 
   const dayCount = items.filter((item) => item.itemType === "day").length;

@@ -38,9 +38,8 @@ function DraggableBoardCard({ item, locked }: { item: BoardItemDTO; locked: bool
         ["--card-x" as string]: `${item.x}px`,
         ["--card-y" as string]: `${item.y}px`,
         transform: `translate3d(${item.x}px, ${item.y}px, 0)`,
-        // The settle transition: agent moves (and our own drops) glide; the
-        // enter animation on mount is handled by .card-enter's keyframes.
-        transition: isDragging ? "none" : "transform 500ms cubic-bezier(0.22, 1, 0.36, 1)",
+        // The settle transition: agent moves glide; human drops land instantly and smoothly
+        transition: isDragging ? "none" : "transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1)",
         zIndex: isDragging ? 30 : item.itemType === "day" ? 5 : undefined,
       }}
     >

@@ -211,6 +211,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   moveItem: async (boardItemId, x, y, name) => {
     get().applyLocalMove(boardItemId, x, y);
+    latestBoardVersion++;
     try {
       const response = await fetch("/api/board/move", {
         method: "POST",
@@ -220,14 +221,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
         pushActivity({ kind: "error", message: body?.error ?? "Couldn't move that card." });
-      } else if (name !== undefined) {
-        // Quiet (no toast — the drag itself is the feedback) but recorded:
-        // the agent can see what the human rearranged via get_activity_log.
-        void logActivity({ actor: "human", action: "move_board_item", detail: `You moved ${name}.`, quiet: true });
+        await get().refresh();
+      } else {
+        latestBoardVersion++;
+        if (name !== undefined) {
+          void logActivity({ actor: "human", action: "move_board_item", detail: `You moved ${name}.`, quiet: true });
+        }
       }
     } catch {
       pushActivity({ kind: "error", message: "Couldn't reach the board. Try again." });
-    } finally {
       await get().refresh();
     }
   },
