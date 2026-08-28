@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Fieldward design tokens — Tailwind v4 is CSS-first: this @theme block is
+ * the source of truth for the palette and font stacks. The same values are
+ * mirrored in src/lib/theme.ts for use in TS/JSX where needed.
+ *
+ * Direction: a shared trip-planning board for the outdoors. Warm paper
+ * background, warm charcoal ink, one rust accent used sparingly, moss as the
+ * quiet secondary. Fraunces (serif) for headings, Inter for body/UI.
+ */
+
+@theme {
+  /* Brand palette */
+  --color-paper: #f5f1e8;
+  --color-paper-raised: #fcfaf3;
+  --color-sand: #ebe4d2;
+  --color-ink: #29261f;
+  --color-ink-soft: #5b564b;
+  --color-ink-faint: #8a8474;
+  --color-line: #ddd5c1;
+  --color-line-strong: #c8bea5;
+  --color-rust: #b4552b;
+  --color-rust-deep: #8f421f;
+  --color-moss: #5a6549;
+  --color-moss-deep: #454f37;
+  --color-pine: #30362a;
+  --color-clay: #a23b2a;
+}
+
+@theme inline {
+  /*
+   * Font stacks (variables provided by next/font in layout.tsx).
+   *
+   * These MUST be `inline`: next/font declares --font-fraunces / --font-inter
+   * on <body>, but a plain `@theme` emits --font-serif on :root, where those
+   * variables don't exist — custom properties resolve their var() references
+   * at declaration time, so the whole value silently becomes
+   * guaranteed-invalid and every heading falls back to the system sans stack.
+   * `inline` bakes `var(--font-fraunces), …` directly into each utility class,
+   * where it resolves per element and picks up the body-level font variables.
+   */
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+
+  /* Map the shadcn/ui variable contract onto the Fieldward palette so the
+     component library inherits the board's look instead of neutral gray. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
+:root {
+  --radius: 0.375rem;
+  --background: #f5f1e8;
+  --foreground: #29261f;
+  --card: #fcfaf3;
+  --card-foreground: #29261f;
+  --popover: #fcfaf3;
+  --popover-foreground: #29261f;
+  --primary: #454f37;
+  --primary-foreground: #f5f1e8;
+  --secondary: #ebe4d2;
+  --secondary-foreground: #29261f;
+  --muted: #ebe4d2;
+  --muted-foreground: #5b564b;
+  --accent: #ebe4d2;
+  --accent-foreground: #29261f;
+  --destructive: #a23b2a;
+  --border: #ddd5c1;
+  --input: #c8bea5;
+  --ring: #b4552b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/40;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  ::selection {
+    background-color: #e9dcc3;
+  }
+}
+
+@layer utilities {
+  /* Slim scrollbar for scrollable panels (gear tray, search dropdown, board) */
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  .thin-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: 999px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Small-caps style used for eyebrows, meta labels, and tags */
+  .eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* The planning board's dot grid — a physical-feeling work surface. */
+  .board-grid {
+    background-image: radial-gradient(circle, var(--color-line-strong) 1.25px, transparent 1.25px);
+    background-size: 32px 32px;
+    background-position: -12px -12px;
+  }
+
+  /* New cards animate onto the board (fade + settle) — this is what makes
+     an agent placement read as a live event rather than a re-render. */
+  @keyframes card-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(var(--card-x), calc(var(--card-y) - 14px), 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(var(--card-x), var(--card-y), 0) scale(1);
+    }
+  }
+
+  .card-enter {
+    animation: card-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@media print {
+  /* The export view prints as a clean packing list + itinerary: chrome and
+     toasts disappear, the board's interactive scroll container is skipped. */
+  body {
+    background: #fff;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-plain {
+    box-shadow: none !important;
+    border-color: #ddd5c1 !important;
+  }
+}

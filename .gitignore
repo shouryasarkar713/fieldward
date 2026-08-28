@@ -1,0 +1,49 @@
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev.log
+*.log
+
+# env files — create your own .env.local if you swap the database
+.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# SQLite side files (the seeded db/fieldward.db itself ships in the repo,
+# so a fresh clone runs with zero setup — see README "Try it")
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# E2E screenshot intermediates (webp versions live in public/)
+scripts/pivot-*.png
+scripts/round4-*.png
+
+# local scratch
+/upload/
