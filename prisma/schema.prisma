@@ -1,0 +1,130 @@
+// Fieldward — data model for the shared trip-planning board.
+//
+// The pivot in one line: there is no shop here. A human and their AI agent
+// jointly assemble a trip on one spatial board; the end state is a locked
+// plan, never an order.
+//
+// Money is still stored in cents (Int) to avoid floating-point drift. Board
+// positions are floats in board-relative pixels (see src/lib/board-geometry.ts
+// for bounds and the default-placement scan). SQLite has no native array
+// type, so GearItem.tags and Proposal.payloadJson are JSON-encoded strings,
+// parsed in the app layer (src/lib/gear.ts, src/lib/proposals.ts).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// The gear library (was Product). `availability` is flavor text, not a count:
+// in a planning tool the useful signal is "can I actually get this before the
+// trip?" — "Low stock — 3 left", "Waitlist until March" — not a warehouse
+// integer. Price is the reference cost used for budget math on the board.
+model GearItem {
+  id           String      @id @default(cuid())
+  name         String
+  description  String
+  price        Int // cents
+  category     String
+  tags         String // JSON string array, parsed in app layer
+  imageUrl     String
+  availability String @default("In stock")
+  boardItems   BoardItem[]
+}
+
+// One movable object on the board (was CartItem). Two itemTypes share this
+// table — simplest option, since both types get identical drag/poll/note
+// plumbing and one tool surface:
+//
+//   "gear" — a GearItem pinned to the board (gearItemId set, quantity ≥ 1)
+//   "day"  — a route/day segment card the human authors (label + text)
+//
+// Budget is deliberately NOT a BoardItem: it lives on TripBrief (the shared
+// framing object) and the board renders it as a derived roll-up, so there is
+// exactly one source of truth for the budget.
+model BoardItem {
+  id         String   @id @default(cuid())
+  sessionId  String
+  itemType   String // "gear" | "day"
+  gearItemId String?
+  label      String? // day blocks: "Day 1 — Cairn Lake"
+  text       String? // day blocks: segment notes ("6 mi, 1,900 ft gain")
+  quantity   Int @default(1) // gear only
+  addedBy    String // "human" | "agent"
+  // Optional first-person reasoning left by the agent tool call — rendered
+  // beside the card as the agent's "voice". Nullable: most cards (and every
+  // human-placed card) carry none.
+  note       String?
+  x          Float
+  y          Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  gearItem   GearItem? @relation(fields: [gearItemId], references: [id])
+
+  @@index([sessionId])
+}
+
+// One per browser session: what the trip is and what it should cost — the
+// shared ground both the human and the agent work from (was ShoppingContext).
+//
+// location/startDate/endDate are the HUMAN's factual inputs (where the trip
+// happens, when it runs) — they ground the weather outlook and, through it,
+// the readiness check. Stored as noon-UTC DateTimes so timezone math can
+// never flip the calendar day; the API speaks plain YYYY-MM-DD strings.
+//
+// lockedAt is the trust boundary: set ONLY by the human "Lock this plan"
+// button (POST /api/brief/lock). No WebMCP tool touches it. While set, every
+// board mutation is refused server-side.
+//
+// Pending agent suggestions live in the Proposal table now (one row per
+// kind — brief updates, day orders): the same accept/dismiss mechanism for
+// every consequential thing the agent wants to influence.
+model TripBrief {
+  id              String    @id @default(cuid())
+  sessionId       String    @unique
+  tripDescription String    @default("")
+  budget          Int? // cents
+  location        String? // free-text place name, e.g. "Rocky Mountain National Park"
+  startDate       DateTime? // noon UTC of the first trip day
+  endDate         DateTime? // noon UTC of the last trip day
+  lockedAt        DateTime?
+  updatedBy       String    @default("human") // who wrote the CURRENT values
+  updatedAt       DateTime  @updatedAt
+}
+
+// One PENDING agent suggestion at a time, per session, per kind:
+//
+//   "brief"     — payload {"tripDescription"?: string, "budget": cents|null}
+//   "day-order" — payload {"orderedBoardItemIds": string[], "note"?: string}
+//
+// The generalized accept/dismiss mechanism (previously TripBrief.proposalJson):
+// agents propose, the human resolves via the matching /resolve route, and
+// nothing consequential changes until they do. Resolved rows are deleted —
+// the activity log is the durable record of verdicts.
+model Proposal {
+  id          String   @id @default(cuid())
+  sessionId   String
+  kind        String // "brief" | "day-order"
+  payloadJson String // kind-specific JSON, parsed in src/lib/proposals.ts
+  createdAt   DateTime @default(now())
+
+  @@unique([sessionId, kind])
+  @@index([sessionId])
+}
+
+// One row per notable action by either party — the shared record both the
+// on-screen toast strip and the get_activity_log WebMCP tool read. This is
+// how the agent "sees" what the human has been doing (and vice versa).
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  actor     String // "human" | "agent"
+  action    String // e.g. "view_gear", "place_gear", "tool:place_on_board"
+  detail    String // short human-readable line, e.g. "Agent placed Trail Runner Boots"
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+}
