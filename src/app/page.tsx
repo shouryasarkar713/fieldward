@@ -8,7 +8,9 @@ import { SITE } from "@/lib/theme";
 export const dynamic = "force-dynamic";
 
 async function loadGear(): Promise<GearItemDTO[]> {
-  const gear = await db.gearItem.findMany();
+  const gear = await db.gearItem.findMany({
+    where: { source: "catalog" },
+  });
   const dtos = gear.map(toGearDTO);
   // Stable default order: category order, then name.
   const categoryOrder = new Map<string, number>(CATEGORIES.map((name, index) => [name, index]));

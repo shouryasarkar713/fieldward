@@ -18,7 +18,7 @@ async function loadGear(id: string) {
 
 async function loadRelated(category: string, excludeId: string) {
   const related = await db.gearItem.findMany({
-    where: { category, id: { not: excludeId } },
+    where: { category, id: { not: excludeId }, source: "catalog" },
     take: 4,
   });
   return related.map(toGearDTO).sort((a, b) => a.name.localeCompare(b.name));

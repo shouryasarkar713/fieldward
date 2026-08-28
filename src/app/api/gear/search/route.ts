@@ -42,6 +42,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const gear = await db.gearItem.findMany({
       where: {
+        source: "catalog",
         OR: terms.flatMap((term) => [
           { name: { contains: term } },
           { description: { contains: term } },

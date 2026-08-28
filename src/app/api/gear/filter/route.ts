@@ -38,6 +38,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const gear = await db.gearItem.findMany({
       where: {
+        source: "catalog",
         ...(category ? { category } : {}),
         ...(minPrice.value !== undefined ? { price: { gte: Math.round(minPrice.value * 100) } } : {}),
         ...(maxPrice.value !== undefined ? { price: { lte: Math.round(maxPrice.value * 100) } } : {}),
